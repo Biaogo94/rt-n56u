@@ -1,0 +1,144 @@
+name: Build Firmware
+
+on:
+  push:
+    branches:
+      - master
+      - main
+      - performance-optimization
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  pull_request:
+    branches:
+      - master
+      - main
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Build target (PSG1218, K2P, etc.)'
+        required: false
+        default: 'PSG1218'
+      variant:
+        description: 'Build variant (mt7620, mt7621, mt7628, mt7621-usb)'
+        required: false
+        default: 'mt7621'
+
+env:
+  IMAGES_DIR: /opt/images
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential gcc g++ make cmake autoconf automake \
+            libtool libtool-bin pkg-config flex bison gawk gperf \
+            zlib1g-dev libgmp3-dev libmpc-dev libmpfr-dev libncurses5-dev \
+            libltdl-dev python3 python3-docutils gettext autopoint texinfo \
+            help2man unzip xxd cpio wget curl git shellcheck p7zip-full \
+            fakeroot kmod file ca-certificates
+
+      - name: Download toolchain
+        run: |
+          cd toolchain-mipsel
+          sh dl_toolchain.sh
+          cd ..
+
+      - name: Verify toolchain
+        run: |
+          ls -la toolchain-mipsel/toolchain-mipsel/bin/ | head -10
+          toolchain-mipsel/toolchain-mipsel/bin/mipsel-linux-uclibc-gcc --version || true
+
+      - name: Build firmware
+        run: |
+          cd trunk
+          mkdir -p ${{ env.IMAGES_DIR }}
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # Single target build
+            target="${{ github.event.inputs.target }}"
+            echo "Building single target: $target"
+            fakeroot ./build_firmware_modify $target
+            if [ $? -eq 0 ]; then
+              cp -f images/*.trx ${{ env.IMAGES_DIR }}/
+            fi
+          else
+            # Multi-target build based on variant
+            variant="${{ github.event.inputs.variant || 'mt7621' }}"
+            case $variant in
+              mt7620)
+                targets="PSG1208 PSG1218 NEWIFI-MINI MI-MINI"
+                ;;
+              mt7628)
+                targets="HC5861B MI-NANO MZ-R13 MZ-R13P 360P2"
+                ;;
+              mt7621)
+                targets="K2P_nano K2P DIR-878 RM2100 CR660x"
+                ;;
+              mt7621-usb)
+                targets="XY-C1 JCG-836PRO JCG-AC860M MI-R3G NEWIFI3 B70"
+                ;;
+              *)
+                targets="PSG1218"
+                ;;
+            esac
+
+            echo "Building targets: $targets"
+            for m in $targets; do
+              echo "=== Building $m ==="
+              fakeroot ./build_firmware_ci $m
+              if [ $? -eq 0 ]; then
+                cp -f images/*.trx ${{ env.IMAGES_DIR }}/$m.trx
+              else
+                echo "Build failed for $m"
+              fi
+              ./clear_tree_simple >/dev/null 2>&1 || true
+            done
+          fi
+
+      - name: List built images
+        run: |
+          ls -lh ${{ env.IMAGES_DIR }}/ || echo "No images built"
+          echo "=== Image sizes ==="
+          du -h ${{ env.IMAGES_DIR }}/*.trx 2>/dev/null || true
+
+      - name: Create archive
+        if: success()
+        run: |
+          if ls ${{ env.IMAGES_DIR }}/*.trx 1> /dev/null 2>&1; then
+            GIT_VERSION=$(git rev-parse --short=7 HEAD 2>/dev/null || echo "unknown")
+            IMAGE_NAME="padavan-firmware-${GIT_VERSION}"
+            cd ${{ env.IMAGES_DIR }}
+            md5sum *.trx | tee md5sum.txt
+            7z a -mx=9 /tmp/${IMAGE_NAME}.7z ./*
+            echo "image_name=${IMAGE_NAME}" >> $GITHUB_ENV
+            echo "Archive created: /tmp/${IMAGE_NAME}.7z"
+            ls -lh /tmp/${IMAGE_NAME}.7z
+          else
+            echo "No firmware images to archive"
+          fi
+
+      - name: Upload firmware artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.image_name || 'firmware' }}
+          path: |
+            ${{ env.IMAGES_DIR }}/*.trx
+            ${{ env.IMAGES_DIR }}/md5sum.txt
+          retention-days: 30
+
+      - name: Upload archive artifact
+        if: success() && env.image_name != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.image_name }}-archive
+          path: /tmp/${{ env.image_name }}.7z
+          retention-days: 30
