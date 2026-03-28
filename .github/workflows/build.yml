@@ -15,14 +15,77 @@ on:
       - main
   workflow_dispatch:
     inputs:
+      build_mode:
+        description: 'Manual build mode'
+        required: true
+        default: 'single-target'
+        type: choice
+        options:
+          - single-target
+          - variant-batch
       target:
-        description: 'Build target (PSG1218, K2P, etc.)'
-        required: false
+        description: 'Build target model'
+        required: true
         default: 'PSG1218'
+        type: choice
+        options:
+          - 360P2
+          - 5K-W20
+          - A3004NS
+          - B70
+          - CR660x
+          - DIR-878
+          - DIR-882
+          - E8820V2
+          - HC5661A
+          - HC5761A
+          - HC5861B
+          - JCG-836PRO
+          - JCG-AC860M
+          - JCG-Q20
+          - JCG-Y2
+          - K2P
+          - K2P_nano
+          - K2P-USB
+          - MI-3
+          - MI-3C
+          - MI-4
+          - MI-MINI
+          - MI-NANO
+          - MI-R3G
+          - MI-R3P
+          - MI-R3P-breed
+          - MI-R4A
+          - MR2600
+          - MSG1500
+          - MZ-R13
+          - MZ-R13P
+          - NETGEAR-BZV
+          - NETGEAR-CHJ
+          - NEWIFI3
+          - NEWIFI-MINI
+          - OYE-001
+          - PSG1208
+          - PSG1218
+          - PSG1218_nano
+          - R2100
+          - R6220
+          - RM2100
+          - RT-AC1200GU
+          - WDR7300
+          - WR1200JS
+          - XY-C1
+          - ZTE_E8820S
       variant:
-        description: 'Build variant (mt7620, mt7621, mt7628, mt7621-usb)'
-        required: false
+        description: 'Batch build variant'
+        required: true
         default: 'mt7621'
+        type: choice
+        options:
+          - mt7620
+          - mt7628
+          - mt7621
+          - mt7621-usb
 
 env:
   IMAGES_DIR: /opt/images
@@ -61,7 +124,7 @@ jobs:
           cd trunk
           mkdir -p ${{ env.IMAGES_DIR }}
 
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.build_mode }}" = "single-target" ]; then
             # Single target build
             target="${{ github.event.inputs.target }}"
             echo "Building single target: $target"

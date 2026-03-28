@@ -198,6 +198,16 @@ fakeroot ./build_firmware_modify PSG1218
 ./clear_tree
 ```
 
+* GitHub Actions 手动构建
+
+```text
+Actions -> Build Firmware -> Run workflow
+```
+
+- `build_mode` 选择 `single-target` 时，可直接从 `target` 下拉框选择要编译的型号
+- `build_mode` 选择 `variant-batch` 时，可从 `variant` 下拉框选择批量构建的平台分组
+- `target` 下拉列表与 `trunk/configs/templates/` 中的机型模板保持一致，避免手填型号出错
+
 ***
 
 ### 请参阅 ###
