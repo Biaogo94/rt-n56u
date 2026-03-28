@@ -269,7 +269,7 @@ procps_status_t* procps_scan(procps_status_t* sp, int flags)
 			unsigned long vsz, rss;
 
 			/* see proc(5) for some details on this */
-			strcpy(filename_tail, "/stat");
+			memcpy(filename_tail, "/stat", 6);
 			n = read_to_buf(filename, buf);
 			if (n < 0)
 				break;
@@ -330,7 +330,7 @@ procps_status_t* procps_scan(procps_status_t* sp, int flags)
 		if (flags & (PSSCAN_ARGV0|PSSCAN_ARGVN)) {
 			free(sp->argv0);
 			sp->argv0 = NULL;
-			strcpy(filename_tail, "/cmdline");
+			memcpy(filename_tail, "/cmdline", 9);
 			n = read_to_buf(filename, buf);
 			if (n <= 0)
 				break;

@@ -1,0 +1,238 @@
+# Multi-architecture build with Docker
+name: Docker Build
+
+on:
+  push:
+    branches:
+      - master
+      - main
+      - develop
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/**'
+      - '!.github/workflows/docker-build.yml'
+  pull_request:
+    branches:
+      - master
+      - main
+    paths-ignore:
+      - '**.md'
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Build target (e.g., PSG1218, K2P, all)'
+        required: false
+        default: 'PSG1218'
+      debug_enabled:
+        description: 'Enable tmate debugging'
+        required: false
+        default: 'no'
+  release:
+    types: [published]
+
+env:
+  DOCKER_IMAGE: padavan-builder
+  IMAGES_DIR: /opt/images
+
+jobs:
+  # Build Docker image (can be cached)
+  build-image:
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tags }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_IMAGE }}
+          tags: |
+            type=sha,prefix=
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          push: false
+          load: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+      - name: Save Docker image
+        run: |
+          docker save ${{ steps.meta.outputs.tags }} | gzip > /tmp/docker-image.tar.gz
+
+      - name: Upload Docker image
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: /tmp/docker-image.tar.gz
+          retention-days: 1
+
+  # Build firmware using Docker image
+  build-firmware:
+    needs: build-image
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: mt7620
+            targets: "PSG1208 PSG1218 NEWIFI-MINI MI-MINI MI-3 OYE-001 5K-W20"
+          - variant: mt7628
+            targets: "HC5861B MI-NANO MZ-R13 MZ-R13P 360P2 HC5761A HC5661A"
+          - variant: mt7621
+            targets: "K2P_nano K2P DIR-878 RM2100 CR660x"
+          - variant: mt7621-usb
+            targets: "XY-C1 JCG-836PRO JCG-AC860M JCG-Y2 DIR-882 A3004NS MSG1500 WR1200JS MI-R3G NEWIFI3 B70"
+    env:
+      build_variant: ${{ matrix.variant }}
+      targets: ${{ matrix.targets }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Docker image
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+          path: /tmp
+
+      - name: Load Docker image
+        run: |
+          docker load < /tmp/docker-image.tar.gz
+          docker images
+
+      - name: Get image tag
+        id: tag
+        run: echo "tag=$(docker images --format '{{.Tag}}' ${{ env.DOCKER_IMAGE }} | head -1)" >> $GITHUB_OUTPUT
+
+      - name: Run shellcheck
+        run: docker run --rm -v ${{ github.workspace }}:/src ${{ env.DOCKER_IMAGE }}:${{ steps.tag.outputs.tag }} sh ./trunk/tools/shellcheck.sh
+
+      - name: Setup tmate session
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled == 'yes' }}
+        uses: mxschmitt/action-tmate@v3
+        with:
+          limit-access-to-actor: true
+
+      - name: Build firmware
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/src \
+            -e build_variant=${{ env.build_variant }} \
+            -e targets="${{ env.targets }}" \
+            -e IMAGES_DIR=${{ env.IMAGES_DIR }} \
+            ${{ env.DOCKER_IMAGE }}:${{ steps.tag.outputs.tag }} \
+            bash -c "
+              cd /src/trunk
+              mkdir -p ${{ env.IMAGES_DIR }}
+              for m in $targets; do
+                echo \"Building \$m...\"
+                fakeroot ./build_firmware_ci \$m
+                if [ \$? = 0 ]; then
+                  cp -f images/*.trx ${{ env.IMAGES_DIR }}/\$m.trx
+                else
+                  echo \"Build failed for \$m\"
+                  exit 1
+                fi
+                ./clear_tree_simple >/dev/null 2>&1
+              done
+            "
+
+      - name: Create archive
+        if: success()
+        run: |
+          ls -lh ${{ env.IMAGES_DIR }} 2>/dev/null || true
+          if [ -d "${{ env.IMAGES_DIR }}" ]; then
+            GIT_VERSION=$(git rev-parse --short=7 HEAD 2>/dev/null)
+            if [ -n "$GIT_VERSION" ]; then
+              image_name=images_${{ env.build_variant }}_${GIT_VERSION}
+            else
+              image_name=images_${{ env.build_variant }}
+            fi
+            cd ${{ env.IMAGES_DIR }}
+            md5sum *.trx | tee md5sum.txt
+            7z a -mx=9 /tmp/${image_name}.7z ./*
+            echo "image_name=${image_name}" >> $GITHUB_ENV
+          fi
+
+      - name: Upload artifacts
+        if: success() && github.event_name != 'release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.image_name }}
+          path: /tmp/${{ env.image_name }}.7z
+          retention-days: 30
+
+      - name: Upload to Release
+        if: github.event_name == 'release' && success()
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ${{ env.IMAGES_DIR }}/*.trx
+          tag: ${{ github.ref }}
+          overwrite: true
+          file_glob: true
+
+  # Quick build for single target (manual trigger)
+  build-quick:
+    needs: build-image
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.target != 'all'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Docker image
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+          path: /tmp
+
+      - name: Load Docker image
+        run: docker load < /tmp/docker-image.tar.gz
+
+      - name: Get image tag
+        id: tag
+        run: echo "tag=$(docker images --format '{{.Tag}}' ${{ env.DOCKER_IMAGE }} | head -1)" >> $GITHUB_OUTPUT
+
+      - name: Build single target
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/src \
+            ${{ env.DOCKER_IMAGE }}:${{ steps.tag.outputs.tag }} \
+            bash -c "
+              cd /src/trunk
+              fakeroot ./build_firmware_modify ${{ github.event.inputs.target }}
+            "
+
+      - name: Upload firmware
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ github.event.inputs.target }}
+          path: trunk/images/*.trx
+          retention-days: 7

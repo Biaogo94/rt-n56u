@@ -119,8 +119,9 @@ extern char * ether_etoa3(const unsigned char *e, char *a);
  */
 static inline char * strcat_r(const char *s1, const char *s2, char *buf)
 {
-	strcpy(buf, s1);
-	strcat(buf, s2);
+	size_t len1 = strlen(s1);
+	memcpy(buf, s1, len1);
+	memcpy(buf + len1, s2, strlen(s2) + 1);
 	return buf;
 }
 
@@ -166,17 +167,16 @@ extern void logmessage(char *logheader, char *fmt, ...);
 })
 
 /* Copy each token in wordlist delimited by space into word */
+/* Note: word must be a char array, not a pointer. sizeof(word) gives buffer size. */
 #define foreach(word, wordlist, next) \
 	for (next = &wordlist[strspn(wordlist, " ")], \
-	     strncpy(word, next, sizeof(word)), \
+	     snprintf(word, sizeof(word), "%s", next), \
 	     word[strcspn(word, " ")] = '\0', \
-	     word[sizeof(word) - 1] = '\0', \
 	     next = strchr(next, ' '); \
 	     strlen(word); \
 	     next = next ? &next[strspn(next, " ")] : "", \
-	     strncpy(word, next, sizeof(word)), \
+	     snprintf(word, sizeof(word), "%s", next), \
 	     word[strcspn(word, " ")] = '\0', \
-	     word[sizeof(word) - 1] = '\0', \
 	     next = strchr(next, ' '))
 
 /* Return NUL instead of NULL if undefined */

@@ -28,6 +28,9 @@ extern int nvram_invmatch(const char *name, char *invmatch);
 extern int nvram_commit(void);
 extern int nvram_clear(void);
 
+/* Close the NVRAM device file descriptor (call on system shutdown) */
+extern void nvram_close(void);
+
 
 #endif
 

@@ -68,15 +68,15 @@ proto_conv(const char *proto_name, int idx)
 	proto = nvram_safe_get(itemname_arr);
 
 	if (!strncasecmp(proto, "Both", 4))
-		strcpy(g_buf, "both");
+		memcpy(g_buf, "both", 5);
 	else if (!strncasecmp(proto, "TCP", 3))
-		strcpy(g_buf, "tcp");
+		memcpy(g_buf, "tcp", 4);
 	else if (!strncasecmp(proto, "UDP", 3))
-		strcpy(g_buf, "udp");
+		memcpy(g_buf, "udp", 4);
 	else if (!strncasecmp(proto, "OTHER", 5))
-		strcpy(g_buf, "other");
+		memcpy(g_buf, "other", 6);
 	else
-		strcpy(g_buf, "tcp");
+		memcpy(g_buf, "tcp", 4);
 
 	return (g_buf_alloc(g_buf));
 }
@@ -90,18 +90,18 @@ protoflag_conv(const char *proto_name, int idx, int isFlag)
 	snprintf(itemname_arr, sizeof(itemname_arr), "%s%d", proto_name, idx);
 	proto = nvram_safe_get(itemname_arr);
 
-	strcpy(g_buf, "");
+	g_buf[0] = 0;
 
 	if (!isFlag) {
 		if (!strncasecmp(proto, "UDP", 3))
-			strcpy(g_buf, "udp");
+			memcpy(g_buf, "udp", 4);
 		else if (!strncasecmp(proto, "OTHER", 5))
-			strcpy(g_buf, "other");
+			memcpy(g_buf, "other", 6);
 		else
-			strcpy(g_buf, "tcp");
+			memcpy(g_buf, "tcp", 4);
 	} else {
 		if (strlen(proto)>3 && !strncasecmp(proto, "TCP", 3))
-			strcpy(g_buf, proto+4);
+			snprintf(g_buf, sizeof(g_buf_pool) - (g_buf - g_buf_pool), "%s", proto+4);
 	}
 
 	return (g_buf_alloc(g_buf));
@@ -113,7 +113,7 @@ portrange_conv(const char *port_name, int idx)
 	char itemname_arr[32];
 
 	snprintf(itemname_arr, sizeof(itemname_arr), "%s%d", port_name, idx);
-	strcpy(g_buf, nvram_safe_get(itemname_arr));
+	snprintf(g_buf, sizeof(g_buf_pool) - (g_buf - g_buf_pool), "%s", nvram_safe_get(itemname_arr));
 
 	return (g_buf_alloc(g_buf));
 }
@@ -124,7 +124,7 @@ ip_conv(const char *ip_name, int idx)
 	char itemname_arr[32];
 
 	snprintf(itemname_arr, sizeof(itemname_arr), "%s%d", ip_name, idx);
-	strcpy(g_buf, nvram_safe_get(itemname_arr));
+	snprintf(g_buf, sizeof(g_buf_pool) - (g_buf - g_buf_pool), "%s", nvram_safe_get(itemname_arr));
 
 	return (g_buf_alloc(g_buf));
 }
@@ -135,7 +135,7 @@ general_conv(const char *ip_name, int idx)
 	char itemname_arr[32];
 
 	snprintf(itemname_arr, sizeof(itemname_arr), "%s%d", ip_name, idx);
-	strcpy(g_buf, nvram_safe_get(itemname_arr));
+	snprintf(g_buf, sizeof(g_buf_pool) - (g_buf - g_buf_pool), "%s", nvram_safe_get(itemname_arr));
 
 	return (g_buf_alloc(g_buf));
 }
@@ -145,7 +145,7 @@ filter_conv(char *proto, char *flag, char *srcip, char *srcport, char *dstip, ch
 {
 	char newstr[128];
 
-	strcpy(g_buf, "");
+	g_buf[0] = 0;
 
 	if (strcmp(proto, "") != 0) {
 		snprintf(newstr, sizeof(newstr), " -p %s", proto);
@@ -226,7 +226,7 @@ timematch_conv(char *mstr, const char *nv_date, const char *nv_time)
 
 	/* check whole day */
 	if (i_full_time) {
-		sprintf(mstr, " -m time %s", "--kerneltz");
+		snprintf(mstr, 160, " -m time %s", "--kerneltz");
 	} else {
 		const char *contiguous = "";
 		
@@ -234,7 +234,7 @@ timematch_conv(char *mstr, const char *nv_date, const char *nv_time)
 		if (i_time_s > i_time_e)
 			contiguous = " --contiguous";
 		
-		sprintf(mstr, " -m time --timestart %c%c:%c%c:00 --timestop %c%c:%c%c:00%s %s",
+		snprintf(mstr, 160, " -m time --timestart %c%c:%c%c:00 --timestop %c%c:%c%c:00%s %s",
 			time[0], time[1], time[2], time[3], time[4], time[5], time[6], time[7],
 			contiguous, "--kerneltz");
 	}
@@ -266,7 +266,7 @@ iprange_ex_conv(const char *ip_name, int idx)
 
 	snprintf(itemname_arr, sizeof(itemname_arr), "%s%d", ip_name, idx);
 	ip = nvram_safe_get(itemname_arr);
-	strcpy(g_buf, "");
+	g_buf[0] = 0;
 
 	// scan all ip string
 	i=j=k=0;
@@ -289,11 +289,11 @@ iprange_ex_conv(const char *ip_name, int idx)
 	endip[k++] = 0;
 
 	if (mask==32)
-		sprintf(g_buf, "%s", startip);
+		snprintf(g_buf, sizeof(g_buf_pool) - (g_buf - g_buf_pool), "%s", startip);
 	else if (mask==0)
-		strcpy(g_buf, "");
+		g_buf[0] = 0;
 	else
-		sprintf(g_buf, "%s/%d", startip, mask);
+		snprintf(g_buf, sizeof(g_buf_pool) - (g_buf - g_buf_pool), "%s/%d", startip, mask);
 
 	return (g_buf_alloc(g_buf));
 }
@@ -437,8 +437,8 @@ include_mac_filter(FILE *fp, int mac_filter_mode, char *logdrop)
 			filter_mac = mac_conv("macfilter_list_x", i, mac_buf);
 			if (*filter_mac) {
 				mac_num++;
-				sprintf(nv_date, "macfilter_date_x%d", i);
-				sprintf(nv_time, "macfilter_time_x%d", i);
+				snprintf(nv_date, sizeof(nv_date), "macfilter_date_x%d", i);
+				snprintf(nv_time, sizeof(nv_time), "macfilter_time_x%d", i);
 				timematch_conv(mac_timematch, nv_date, nv_time);
 				fprintf(fp, "-A %s -m mac --mac-source %s%s -j %s\n", dtype, filter_mac, mac_timematch, ftype);
 			}
@@ -470,7 +470,7 @@ include_webstr_filter(FILE *fp)
 	webstr_items = 0;
 
 	foreach_x("url_num_x") {
-		sprintf(nv_name, "url_keyword_x%d", i);
+		snprintf(nv_name, sizeof(nv_name), "url_keyword_x%d", i);
 		filterstr = nvram_safe_get(nv_name);
 		if (strncasecmp(filterstr, "http://", 7) == 0)
 			filterstr += 7;
@@ -2160,14 +2160,14 @@ start_firewall_ex(void)
 
 	/* Determine the log type */
 	if (nvram_match("fw_log_x", "accept") || nvram_match("fw_log_x", "both"))
-		strcpy(logaccept, IPT_CHAIN_NAME_LOG_ACCEPT);
+		snprintf(logaccept, sizeof(logaccept), IPT_CHAIN_NAME_LOG_ACCEPT);
 	else
-		strcpy(logaccept, "ACCEPT");
+		snprintf(logaccept, sizeof(logaccept), "ACCEPT");
 
 	if (nvram_match("fw_log_x", "drop") || nvram_match("fw_log_x", "both"))
-		strcpy(logdrop, IPT_CHAIN_NAME_LOG_DROP);
+		snprintf(logdrop, sizeof(logdrop), IPT_CHAIN_NAME_LOG_DROP);
 	else
-		strcpy(logdrop, "DROP");
+		snprintf(logdrop, sizeof(logdrop), "DROP");
 
 	/* IPv4 Raw rules */
 	ipt_raw_rules();

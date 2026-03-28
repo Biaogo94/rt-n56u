@@ -30,19 +30,24 @@ static void notify_rc_internal(const char *event_name, int wait_sec)
 	FILE *fp;
 	int i;
 	char *full_name;
+	size_t name_len;
 
-	full_name = (char *)(malloc(strlen(event_name) + 32));
+	if (!event_name || !event_name[0])
+		return;
+
+	name_len = strlen(event_name);
+	full_name = (char *)(malloc(name_len + 32));
 	if (!full_name) {
 		fprintf(stderr, "notify_rc: failed to alloc event memory!\n");
 		return;
 	}
 
-	sprintf(full_name, "%s/%s", DIR_RC_INCOMPLETE, event_name);
+	snprintf(full_name, name_len + 32, "%s/%s", DIR_RC_INCOMPLETE, event_name);
 	fp = fopen(full_name, "w");
 	if (fp)
 		fclose(fp);
 
-	sprintf(full_name, "%s/%s", DIR_RC_NOTIFY, event_name);
+	snprintf(full_name, name_len + 32, "%s/%s", DIR_RC_NOTIFY, event_name);
 	fp = fopen(full_name, "w");
 	if (fp)
 		fclose(fp);
@@ -50,7 +55,7 @@ static void notify_rc_internal(const char *event_name, int wait_sec)
 	kill(1, SIGUSR1);
 
 	if (wait_sec > 0) {
-		sprintf(full_name, "%s/%s", DIR_RC_INCOMPLETE, event_name);
+		snprintf(full_name, name_len + 32, "%s/%s", DIR_RC_INCOMPLETE, event_name);
 		for(i=0;i<wait_sec;i++) {
 			fp = fopen(full_name, "r");
 			if (!fp)

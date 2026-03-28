@@ -34,16 +34,36 @@
 #define MAX_CACHE_LEN	(2*NVRAM_MAX_VALUE_LEN)
 #define MIN_CACHE_RES	32
 
+/* Persistent file descriptor for NVRAM operations */
+static int nvram_fd = -1;
+
+/* Get or open the NVRAM device file descriptor */
+static int nvram_get_fd(void)
+{
+	if (nvram_fd < 0) {
+		nvram_fd = open(PATH_DEV_NVRAM, O_RDWR);
+	}
+	return nvram_fd;
+}
+
+/* Close the NVRAM device file descriptor (call on system shutdown) */
+void nvram_close(void)
+{
+	if (nvram_fd >= 0) {
+		close(nvram_fd);
+		nvram_fd = -1;
+	}
+}
+
 char *
 nvram_get_(const char *name)
 {
 	static int  nvr_index = 0;
 	static char nvr_cache[MAX_CACHE_LEN] = {0};
-	int ret, i_cache, nvram_fd;
+	int ret, i_cache;
 	anvram_ioctl_t nvr;
 
-	nvram_fd = open(PATH_DEV_NVRAM, O_RDWR);
-	if (nvram_fd < 0) {
+	if (nvram_get_fd() < 0) {
 		perror(PATH_DEV_NVRAM);
 		return NULL;
 	}
@@ -69,7 +89,6 @@ nvram_get_(const char *name)
 		}
 		if (ret < 0) {
 			perror(PATH_DEV_NVRAM);
-			close(nvram_fd);
 			return NULL;
 		}
 	}
@@ -78,8 +97,6 @@ nvram_get_(const char *name)
 		nvr.value = NULL;
 	else
 		nvr_index = i_cache + nvr.len_value;
-
-	close(nvram_fd);
 
 	return nvr.value;
 }
@@ -126,14 +143,13 @@ nvram_safe_get_int(const char* name, int val_def, int val_min, int val_max)
 int
 nvram_getall(char *buf, int count, int include_temp)
 {
-	int ret, nvram_fd;
+	int ret;
 	anvram_ioctl_t nvr;
 
 	if (!buf || count < 1)
 		return 0;
 
-	nvram_fd = open(PATH_DEV_NVRAM, O_RDWR);
-	if (nvram_fd < 0) {
+	if (nvram_get_fd() < 0) {
 		perror(PATH_DEV_NVRAM);
 		return -1;
 	}
@@ -152,19 +168,16 @@ nvram_getall(char *buf, int count, int include_temp)
 	if (ret < 0)
 		perror(PATH_DEV_NVRAM);
 
-	close(nvram_fd);
-
 	return ret;
 }
 
 int
 _nvram_set(const char *name, const char *value, int is_temp)
 {
-	int ret, nvram_fd;
+	int ret;
 	anvram_ioctl_t nvr;
 
-	nvram_fd = open(PATH_DEV_NVRAM, O_RDWR);
-	if (nvram_fd < 0) {
+	if (nvram_get_fd() < 0) {
 		perror(PATH_DEV_NVRAM);
 		return -1;
 	}
@@ -181,8 +194,6 @@ _nvram_set(const char *name, const char *value, int is_temp)
 	ret = ioctl(nvram_fd, NVRAM_IOCTL_SET, &nvr);
 	if (ret < 0)
 		perror(PATH_DEV_NVRAM);
-
-	close(nvram_fd);
 
 	return ret;
 }
@@ -202,14 +213,14 @@ nvram_set_temp(const char *name, const char *value)
 int nvram_set_int(const char *name, int value)
 {
 	char int_str[16];
-	sprintf(int_str, "%d", value);
+	snprintf(int_str, sizeof(int_str), "%d", value);
 	return _nvram_set(name, int_str, 0);
 }
 
 int nvram_set_int_temp(const char *name, int value)
 {
 	char int_str[16];
-	sprintf(int_str, "%d", value);
+	snprintf(int_str, sizeof(int_str), "%d", value);
 	return _nvram_set(name, int_str, 1);
 }
 
@@ -236,10 +247,9 @@ nvram_invmatch(const char *name, char *invmatch)
 int
 nvram_commit(void)
 {
-	int ret, nvram_fd;
+	int ret;
 
-	nvram_fd = open(PATH_DEV_NVRAM, O_RDWR);
-	if (nvram_fd < 0) {
+	if (nvram_get_fd() < 0) {
 		perror(PATH_DEV_NVRAM);
 		return -1;
 	}
@@ -248,18 +258,15 @@ nvram_commit(void)
 	if (ret < 0)
 		perror(PATH_DEV_NVRAM);
 
-	close(nvram_fd);
-
 	return ret;
 }
 
 int
 nvram_clear(void)
 {
-	int ret, nvram_fd;
+	int ret;
 
-	nvram_fd = open(PATH_DEV_NVRAM, O_RDWR);
-	if (nvram_fd < 0) {
+	if (nvram_get_fd() < 0) {
 		perror(PATH_DEV_NVRAM);
 		return -1;
 	}
@@ -267,8 +274,6 @@ nvram_clear(void)
 	ret = ioctl(nvram_fd, NVRAM_IOCTL_CLEAR, 0);
 	if (ret < 0)
 		perror(PATH_DEV_NVRAM);
-
-	close(nvram_fd);
 
 	return ret;
 }

@@ -174,7 +174,7 @@ get_eeprom_params(void)
 	if (buffer[0] & 0x01) {
 		if (ether_atoe(macaddr_wl, ea)) {
 			memcpy(buffer, ea, ETHER_ADDR_LEN);
-			strcpy(macaddr_lan, macaddr_wl);
+			snprintf(macaddr_lan, sizeof(macaddr_lan), "%s", macaddr_wl);
 			if (i_ret >= 0)
 				flash_mtd_write(MTD_PART_NAME_FACTORY, i_offset, ea, ETHER_ADDR_LEN);
 		}
@@ -220,7 +220,7 @@ get_eeprom_params(void)
 	memset(country_code, 0, sizeof(country_code));
 	i_ret = flash_mtd_read(MTD_PART_NAME_FACTORY, OFFSET_COUNTRY_CODE, country_code, 2);
 	if (i_ret < 0) {
-		strcpy(country_code, "GB");
+		memcpy(country_code, "GB", 3);
 	} else {
 		country_code[2] = 0;
 		for (i = 1; i >= 0; i--) {
@@ -228,10 +228,10 @@ get_eeprom_params(void)
 				country_code[i] = 0;
 		}
 		if (country_code[0] == 0)
-			strcpy(country_code, "GB");
+			memcpy(country_code, "GB", 3);
 	}
 #else
-	strcpy(country_code, "GB");
+	memcpy(country_code, "GB", 3);
 #endif
 
 	if (strlen(nvram_wlan_get(0, "country_code")) == 0)
@@ -245,7 +245,7 @@ get_eeprom_params(void)
 	memset(regspec_code, 0, sizeof(regspec_code));
 	i_ret = flash_mtd_read(MTD_PART_NAME_FACTORY, OFFSET_REGSPEC_CODE, regspec_code, 4);
 	if (i_ret < 0) {
-		strcpy(regspec_code, "CE");
+		memcpy(regspec_code, "CE", 3);
 	} else {
 		regspec_code[4] = 0;
 		for (i = 3; i >= 0; i--) {
@@ -254,10 +254,10 @@ get_eeprom_params(void)
 		}
 		
 		if (!check_regspec_code(regspec_code))
-			strcpy(regspec_code, "CE");
+			memcpy(regspec_code, "CE", 3);
 	}
 #else
-	strcpy(regspec_code, "CE");
+	memcpy(regspec_code, "CE", 3);
 #endif
 	nvram_set_temp("regspec_code", regspec_code);
 
@@ -266,7 +266,7 @@ get_eeprom_params(void)
 	memset(wps_pin, 0, sizeof(wps_pin));
 	i_ret = flash_mtd_read(MTD_PART_NAME_FACTORY, OFFSET_PIN_CODE, wps_pin, 8);
 	if (i_ret < 0) {
-		strcpy(wps_pin, "12345670");
+		memcpy(wps_pin, "12345670", 9);
 	} else {
 		wps_pin[8] = 0;
 		for (i = 7; i >= 0; i--) {
@@ -275,10 +275,10 @@ get_eeprom_params(void)
 				wps_pin[i] = 0;
 		}
 		if (wps_pin[0] == 0)
-			strcpy(wps_pin, "12345670");
+			memcpy(wps_pin, "12345670", 9);
 	}
 #else
-	strcpy(wps_pin, "12345670");
+	memcpy(wps_pin, "12345670", 9);
 #endif
 	nvram_set_temp("secret_code", wps_pin);
 
@@ -301,8 +301,8 @@ get_eeprom_params(void)
 #endif
 
 	/* read firmware header */
-	strcpy(fwver, "3.0.0.0");
-	strcpy(fwver_sub, fwver);
+	snprintf(fwver, sizeof(fwver), "3.0.0.0");
+	snprintf(fwver_sub, sizeof(fwver_sub), "%s", fwver);
 	snprintf(productid, sizeof(productid), "%s", BOARD_PID);
 	memset(buffer, 0, sizeof(buffer));
 	i_ret = flash_mtd_read(MTD_PART_NAME_KERNEL, 0x20, buffer, 32);
@@ -314,11 +314,11 @@ get_eeprom_params(void)
 		productid[12] = 0;
 		
 		if(valid_subver(buffer[27]))
-			sprintf(fwver_sub, "%d.%d.%d.%d%c", buffer[0], buffer[1], buffer[2], buffer[3], buffer[27]);
+			snprintf(fwver_sub, sizeof(fwver_sub), "%d.%d.%d.%d%c", buffer[0], buffer[1], buffer[2], buffer[3], buffer[27]);
 		else
-			sprintf(fwver_sub, "%d.%d.%d.%d", buffer[0], buffer[1], buffer[2], buffer[3]);
+			snprintf(fwver_sub, sizeof(fwver_sub), "%d.%d.%d.%d", buffer[0], buffer[1], buffer[2], buffer[3]);
 		
-		sprintf(fwver, "%d.%d.%d.%d", buffer[0], buffer[1], buffer[2], buffer[3]);
+		snprintf(fwver, sizeof(fwver), "%d.%d.%d.%d", buffer[0], buffer[1], buffer[2], buffer[3]);
 	}
 
 #if defined(FWBLDSTR)
@@ -439,8 +439,8 @@ char_to_ascii(char *output, char *input)
 			*ptr = input[i];
 			ptr ++;
 		} else {
-			sprintf(tmp, "%%%.02X", input[i]);
-			strcpy(ptr, tmp);
+			snprintf(tmp, sizeof(tmp), "%%%.02X", input[i]);
+			memcpy(ptr, tmp, 3);
 			ptr += 3;
 		}
 	}
@@ -466,7 +466,7 @@ int
 fput_int(const char *name, int value)
 {
 	char svalue[32];
-	sprintf(svalue, "%d", value);
+	snprintf(svalue, sizeof(svalue), "%d", value);
 	return fput_string(name, svalue);
 }
 
@@ -846,8 +846,8 @@ rename_if_dir_exist(const char *dir, const char *subdir)
 	if ((dirp = opendir(dir))) {
 		while (dirp && (direntp = readdir(dirp))) {
 			if (!strcasecmp(direntp->d_name, subdir) && strcmp(direntp->d_name, subdir)) {
-				sprintf(oldpath, "%s/%s", dir, direntp->d_name);
-				sprintf(newpath, "%s/%s", dir, subdir);
+				snprintf(oldpath, sizeof(oldpath), "%s/%s", dir, direntp->d_name);
+				snprintf(newpath, sizeof(newpath), "%s/%s", dir, subdir);
 				rename(oldpath, newpath);
 				return 1;
 			}
@@ -872,7 +872,7 @@ if_dircase_exist(const char *dir, const char *subdir)
 	if ((dirp = opendir(dir))) {
 		while (dirp && (direntp = readdir(dirp))) {
 			if (!strcasecmp(direntp->d_name, subdir) && strcmp(direntp->d_name, subdir)) {
-				sprintf(oldpath, "%s/%s", dir, direntp->d_name);
+				snprintf(oldpath, sizeof(oldpath), "%s/%s", dir, direntp->d_name);
 				return strdup(oldpath);
 			}
 		}
