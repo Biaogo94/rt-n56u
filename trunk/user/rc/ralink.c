@@ -561,11 +561,113 @@ symlink_sku_file(const char *sku_file, const char *prefix, const char *cc, int r
 }
 
 static int
+strings_equal(const char *s1, const char *s2)
+{
+	if (!s1)
+		s1 = "";
+	if (!s2)
+		s2 = "";
+
+	return !strcmp(s1, s2);
+}
+
+static int
+get_band_steering_mode(void)
+{
+#if BOARD_HAS_2G_RADIO && BOARD_HAS_5G_RADIO
+	const char *ssid_2g, *ssid_5g;
+	const char *auth_2g, *auth_5g;
+	const char *crypto_2g, *crypto_5g;
+	const char *psk_2g, *psk_5g;
+	int mode_2g, mode_5g;
+
+	if (!nvram_wlan_get_int(0, "radio_x") || !nvram_wlan_get_int(1, "radio_x"))
+		return 0;
+
+	mode_2g = nvram_wlan_get_int(0, "mode_x");
+	mode_5g = nvram_wlan_get_int(1, "mode_x");
+	if (mode_2g == 1 || mode_2g == 3 || mode_5g == 1 || mode_5g == 3)
+		return 0;
+
+	ssid_2g = nvram_wlan_get(0, "ssid");
+	ssid_5g = nvram_wlan_get(1, "ssid");
+	if (!ssid_2g || !ssid_2g[0] || !strings_equal(ssid_2g, ssid_5g))
+		return 0;
+
+	auth_2g = nvram_wlan_get(0, "auth_mode");
+	auth_5g = nvram_wlan_get(1, "auth_mode");
+	crypto_2g = nvram_wlan_get(0, "crypto");
+	crypto_5g = nvram_wlan_get(1, "crypto");
+	if (!strings_equal(auth_2g, auth_5g) || !strings_equal(crypto_2g, crypto_5g))
+		return 0;
+
+	if (nvram_wlan_get_int(0, "wpa_mode") != nvram_wlan_get_int(1, "wpa_mode"))
+		return 0;
+
+	if (auth_2g && !strcmp(auth_2g, "psk")) {
+		psk_2g = nvram_wlan_get(0, "wpa_psk");
+		psk_5g = nvram_wlan_get(1, "wpa_psk");
+		if (!strings_equal(psk_2g, psk_5g))
+			return 0;
+	}
+
+#if defined (USE_WID_2G) && (USE_WID_2G==7615 || USE_WID_2G==7915)
+	return 1;
+#elif defined (USE_WID_5G) && (USE_WID_5G==7615 || USE_WID_5G==7915)
+	return 1;
+#else
+	return 2;
+#endif
+#else
+	return 0;
+#endif
+}
+
+static int
+get_rrm_enable(int is_aband, int band_steering)
+{
+	if (!band_steering)
+		return 0;
+
+#if defined (USE_WID_5G) && (USE_WID_5G==7615 || USE_WID_5G==7915)
+	if (is_aband)
+		return 1;
+#endif
+
+#if defined (USE_WID_2G) && (USE_WID_2G==7615 || USE_WID_2G==7915)
+	if (!is_aband)
+		return 1;
+#endif
+
+	return 0;
+}
+
+static int
+get_wnm_enable(int is_aband, int band_steering)
+{
+	if (!band_steering)
+		return 0;
+
+#if defined (USE_WID_5G) && (USE_WID_5G==7615 || USE_WID_5G==7915)
+	if (is_aband)
+		return 1;
+#endif
+
+#if defined (USE_WID_2G) && (USE_WID_2G==7615 || USE_WID_2G==7915)
+	if (!is_aband)
+		return 1;
+#endif
+
+	return 0;
+}
+
+static int
 gen_ralink_config(int is_soc_ap, int is_aband, int disable_autoscan)
 {
 	FILE *fp;
 	char list[2048], *p_str, *c_val_mbss[2];
 	int i, i_num,  i_val, i_wmm, i_ldpc;
+	int i_band_steering, i_ht_bss_coex, i_rrm_enable, i_sku_enable, i_wnm_enable;
 	int i_mode_x, i_phy_mode, i_gfe, i_auth, i_encr, i_wep, i_wds;
 	int i_ssid_num, i_channel, i_channel_max, i_HTBW_MAX;
 	int i_stream_tx, i_stream_rx, i_mphy, i_mmcs, i_fphy[2], i_val_mbss[2];
@@ -573,6 +675,11 @@ gen_ralink_config(int is_soc_ap, int is_aband, int disable_autoscan)
 
 	i_ssid_num = 2; // AP+GuestAP
 	i_channel_max = 13;
+	i_band_steering = get_band_steering_mode();
+	i_ht_bss_coex = 0;
+	i_rrm_enable = get_rrm_enable(is_aband, i_band_steering);
+	i_sku_enable = 0;
+	i_wnm_enable = get_wnm_enable(is_aband, i_band_steering);
 
 	if (is_soc_ap) {
 		dat_file = "/etc/Wireless/RT2860/RT2860AP.dat";
@@ -642,6 +749,8 @@ gen_ralink_config(int is_soc_ap, int is_aband, int disable_autoscan)
 	if (is_aband)
 		symlink_sku_file(sku_file, "_5G", p_str, i_val, 1);
 
+	i_sku_enable = check_if_file_exist(sku_file);
+
 	//CountryCode
 	p_str = nvram_wlan_get(is_aband, "country_code");
 	if (strlen(p_str) != 2)
@@ -682,14 +791,14 @@ gen_ralink_config(int is_soc_ap, int is_aband, int disable_autoscan)
 	fprintf(fp, "CalCacheApply=%d\n", 0);
 	fprintf(fp, "LoadCodeMethod=%d\n", 0);
 	fprintf(fp, "VHT_Sec80_Channel=%d\n", 0);
-	fprintf(fp, "WNMEnable=%d\n", 0);
-	fprintf(fp, "SKUenable=%d\n", 0);
+	fprintf(fp, "WNMEnable=%d\n", i_wnm_enable);
+	fprintf(fp, "SKUenable=%d\n", i_sku_enable);
 	fprintf(fp, "PowerUpenable=%d\n", 0);
 	fprintf(fp, "VOW_Airtime_Fairness_En=%d\n", 0);
 	fprintf(fp, "VOW_Airtime_Ctrl_En=%d\n", 0);
 	fprintf(fp, "VOW_Rate_Ctrl_En=%d\n", 0);
 	fprintf(fp, "VOW_WATF_Enable=%d\n", 0);
-	fprintf(fp, "BandSteering=%d\n", 0);
+	fprintf(fp, "BandSteering=%d\n", i_band_steering);
 	fprintf(fp, "BFBACKOFFenable=%d\n", 0);
 	fprintf(fp, "DfsCalibration=%d\n", 0);
 	fprintf(fp, "ITxBfTimeout=%d\n", 0);
@@ -704,7 +813,7 @@ gen_ralink_config(int is_soc_ap, int is_aband, int disable_autoscan)
 	fprintf(fp, "DfsDedicatedZeroWait=%d\n", 0);
 	fprintf(fp, "DfsZeroWaitDefault=%d\n", 0);
 	fprintf(fp, "KernelRps=%d\n", 0);
-	fprintf(fp, "RRMEnable=%d\n", 0);
+	fprintf(fp, "RRMEnable=%d\n", i_rrm_enable);
 	fprintf(fp, "MboSupport=%d\n", 0);
 
 #if defined (USE_MT7615_AP) || defined (USE_MT7915_AP)
@@ -1273,7 +1382,14 @@ gen_ralink_config(int is_soc_ap, int is_aband, int disable_autoscan)
 	fprintf(fp, "HT_BW=%d\n", i_val);
 
 	//HT_BSSCoexistence
-	fprintf(fp, "HT_BSSCoexistence=%d\n", 0);
+	if (!is_aband) {
+		i_ht_bss_coex = nvram_wlan_get_int(0, "HT_BW");
+		if (i_ht_bss_coex > 0 && i_HTBW_MAX > 0)
+			i_ht_bss_coex = 1;
+		else
+			i_ht_bss_coex = 0;
+	}
+	fprintf(fp, "HT_BSSCoexistence=%d\n", i_ht_bss_coex);
 
 	//HT_BSSCoexAPCntThr
 	fprintf(fp, "HT_BSSCoexAPCntThr=%d\n", 10);
