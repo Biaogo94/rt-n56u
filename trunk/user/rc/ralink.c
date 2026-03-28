@@ -572,6 +572,172 @@ strings_equal(const char *s1, const char *s2)
 }
 
 static int
+is_mt7615_or_mt7915_band(int is_aband)
+{
+#if defined (USE_WID_5G) && (USE_WID_5G==7615 || USE_WID_5G==7915)
+	if (is_aband)
+		return 1;
+#endif
+
+#if defined (USE_WID_2G) && (USE_WID_2G==7615 || USE_WID_2G==7915)
+	if (!is_aband)
+		return 1;
+#endif
+
+	return 0;
+}
+
+static void
+write_ax_feature_block(FILE *fp, int is_enabled, int pp_enable)
+{
+	fprintf(fp, "TWTSupport=%d\n", 0);
+	fprintf(fp, "PPEnable=%d\n", (is_enabled) ? pp_enable : 0);
+	fprintf(fp, "MuOfdmaDlEnable=%d\n", (is_enabled) ? 1 : 0);
+	fprintf(fp, "MuOfdmaUlEnable=%d\n", 0);
+	fprintf(fp, "SREnable=%d\n", (is_enabled) ? 1 : 0);
+	fprintf(fp, "SRMode=%d\n", 0);
+	fprintf(fp, "SRSDEnable=%d\n", (is_enabled) ? 1 : 0);
+}
+
+static int
+has_band_steering_support(void)
+{
+#if defined (CONFIG_BAND_STEERING)
+	return 1;
+#else
+	return 0;
+#endif
+}
+
+static int
+has_rrm_support(void)
+{
+#if defined (CONFIG_DOT11K_RRM_SUPPORT)
+	return 1;
+#else
+	return 0;
+#endif
+}
+
+static int
+has_wnm_support(void)
+{
+#if defined (CONFIG_WNM_SUPPORT)
+	return 1;
+#else
+	return 0;
+#endif
+}
+
+static int
+has_mbo_support(void)
+{
+#if defined (CONFIG_MBO_SUPPORT)
+	return 1;
+#else
+	return 0;
+#endif
+}
+
+static int
+has_vow_support(void)
+{
+#if defined (CONFIG_VOW_SUPPORT)
+	return 1;
+#else
+	return 0;
+#endif
+}
+
+static int
+has_whnat_support(void)
+{
+#if defined (CONFIG_WHNAT_SUPPORT)
+	return 1;
+#else
+	return 0;
+#endif
+}
+
+static void
+write_modern_2g_features(FILE *fp, int i_phy_mode)
+{
+#if defined (USE_WID_2G) && (USE_WID_2G==7615 || USE_WID_2G==7915)
+	fprintf(fp, "G_BAND_256QAM=%d\n", nvram_wlan_get_int(0, "turbo_qam"));
+#if defined(BOARD_HAS_2G_11AX) && BOARD_HAS_2G_11AX
+	write_ax_feature_block(fp, i_phy_mode == PHY_11AX_24G, 0);
+#endif
+#endif
+}
+
+static void
+write_modern_5g_features(FILE *fp, int i_phy_mode)
+{
+#if defined (USE_WID_5G) && (USE_WID_5G==7615 || USE_WID_5G==7915)
+	int i_mumimo;
+
+	i_mumimo = nvram_wlan_get_int(1, "mumimo");
+	fprintf(fp, "MUTxRxEnable=%d\n", (i_mumimo) ? 1 : 0);
+	fprintf(fp, "MuMimoDlEnable=%d\n", (i_mumimo) ? 1 : 0);
+	fprintf(fp, "MuMimoUlEnable=%d\n", 0);
+#if defined(BOARD_HAS_5G_11AX) && BOARD_HAS_5G_11AX
+	write_ax_feature_block(fp, i_phy_mode == PHY_11AX_5G, 1);
+#endif
+#endif
+}
+
+static int
+get_auto_channel_select_mode(int is_aband, int i_channel)
+{
+	if (i_channel != 0)
+		return 0;
+
+	if (is_mt7615_or_mt7915_band(is_aband))
+		return 3;
+
+	return 2;
+}
+
+static int
+get_cs_period(int is_aband)
+{
+	if (is_mt7615_or_mt7915_band(is_aband))
+		return 6;
+
+	return 10;
+}
+
+static int
+supports_vht160(int is_aband)
+{
+	if (!is_aband)
+		return 0;
+
+#if defined (USE_WID_5G) && (USE_WID_5G==7615) && !defined (BOARD_MT7615_DBDC)
+	return 1;
+#endif
+
+#if defined (USE_WID_5G) && (USE_WID_5G==7915) && !defined (BOARD_MT7915_DBDC)
+	return 1;
+#endif
+
+	return 0;
+}
+
+static int
+supports_vht_stbc(int is_aband)
+{
+	if (!is_aband)
+		return 0;
+
+#if defined (USE_WID_5G) && (USE_WID_5G==7615 || USE_WID_5G == 7915)
+	return 1;
+#endif
+
+	return 0;
+}
+
+static int
 get_band_steering_mode(void)
 {
 #if BOARD_HAS_2G_RADIO && BOARD_HAS_5G_RADIO
@@ -580,6 +746,9 @@ get_band_steering_mode(void)
 	const char *crypto_2g, *crypto_5g;
 	const char *psk_2g, *psk_5g;
 	int mode_2g, mode_5g;
+
+	if (!has_band_steering_support())
+		return 0;
 
 	if (!nvram_wlan_get_int(0, "radio_x") || !nvram_wlan_get_int(1, "radio_x"))
 		return 0;
@@ -611,13 +780,10 @@ get_band_steering_mode(void)
 			return 0;
 	}
 
-#if defined (USE_WID_2G) && (USE_WID_2G==7615 || USE_WID_2G==7915)
-	return 1;
-#elif defined (USE_WID_5G) && (USE_WID_5G==7615 || USE_WID_5G==7915)
-	return 1;
-#else
+	if (is_mt7615_or_mt7915_band(0) || is_mt7615_or_mt7915_band(1))
+		return 1;
+
 	return 2;
-#endif
 #else
 	return 0;
 #endif
@@ -626,18 +792,14 @@ get_band_steering_mode(void)
 static int
 get_rrm_enable(int is_aband, int band_steering)
 {
+	if (!has_rrm_support() || !has_wnm_support())
+		return 0;
+
 	if (!band_steering)
 		return 0;
 
-#if defined (USE_WID_5G) && (USE_WID_5G==7615 || USE_WID_5G==7915)
-	if (is_aband)
+	if (is_mt7615_or_mt7915_band(is_aband))
 		return 1;
-#endif
-
-#if defined (USE_WID_2G) && (USE_WID_2G==7615 || USE_WID_2G==7915)
-	if (!is_aband)
-		return 1;
-#endif
 
 	return 0;
 }
@@ -645,18 +807,14 @@ get_rrm_enable(int is_aband, int band_steering)
 static int
 get_wnm_enable(int is_aband, int band_steering)
 {
+	if (!has_rrm_support() || !has_wnm_support())
+		return 0;
+
 	if (!band_steering)
 		return 0;
 
-#if defined (USE_WID_5G) && (USE_WID_5G==7615 || USE_WID_5G==7915)
-	if (is_aband)
+	if (is_mt7615_or_mt7915_band(is_aband))
 		return 1;
-#endif
-
-#if defined (USE_WID_2G) && (USE_WID_2G==7615 || USE_WID_2G==7915)
-	if (!is_aband)
-		return 1;
-#endif
 
 	return 0;
 }
@@ -667,13 +825,14 @@ gen_ralink_config(int is_soc_ap, int is_aband, int disable_autoscan)
 	FILE *fp;
 	char list[2048], *p_str, *c_val_mbss[2];
 	int i, i_num,  i_val, i_wmm, i_ldpc;
-	int i_band_steering, i_ht_bss_coex, i_rrm_enable, i_sku_enable, i_wnm_enable;
+	int i_acs_mode, i_band_steering, i_ht_bss_coex, i_rrm_enable, i_sku_enable, i_wnm_enable;
 	int i_mode_x, i_phy_mode, i_gfe, i_auth, i_encr, i_wep, i_wds;
 	int i_ssid_num, i_channel, i_channel_max, i_HTBW_MAX;
 	int i_stream_tx, i_stream_rx, i_mphy, i_mmcs, i_fphy[2], i_val_mbss[2];
 	const char *dat_file, *sku_file, *prefix = (is_aband) ? "wl" : "rt";
 
 	i_ssid_num = 2; // AP+GuestAP
+	i_acs_mode = 0;
 	i_channel_max = 13;
 	i_band_steering = get_band_steering_mode();
 	i_ht_bss_coex = 0;
@@ -825,66 +984,10 @@ gen_ralink_config(int is_soc_ap, int is_aband, int disable_autoscan)
 	fprintf(fp, "RED_Enable=%d\n", 1);
 #endif
 
-#if defined (USE_WID_2G) && (USE_WID_2G==7615 || USE_WID_2G==7915)
-	if (!is_aband) {
-		fprintf(fp, "G_BAND_256QAM=%d\n", nvram_wlan_get_int(0, "turbo_qam"));
-#if defined(BOARD_HAS_2G_11AX) && BOARD_HAS_2G_11AX
-		if (i_phy_mode == PHY_11AX_24G) {
-			/* 2.4g wifi6 mode */
-			fprintf(fp, "TWTSupport=%d\n", 0);
-			fprintf(fp, "PPEnable=%d\n", 0);
-			fprintf(fp, "MuOfdmaDlEnable=%d\n", 1);
-			fprintf(fp, "MuOfdmaUlEnable=%d\n", 0);
-			fprintf(fp, "SREnable=%d\n", 1);
-			fprintf(fp, "SRMode=%d\n", 0);
-			fprintf(fp, "SRSDEnable=%d\n", 1);
-		} else {
-			fprintf(fp, "TWTSupport=%d\n", 0);
-			fprintf(fp, "PPEnable=%d\n", 0);
-			fprintf(fp, "MuOfdmaDlEnable=%d\n", 0);
-			fprintf(fp, "MuOfdmaUlEnable=%d\n", 0);
-			fprintf(fp, "SREnable=%d\n", 0);
-			fprintf(fp, "SRMode=%d\n", 0);
-			fprintf(fp, "SRSDEnable=%d\n", 0);
-		}
-#endif
-	}
-#endif
-
-#if defined (USE_WID_5G) && (USE_WID_5G==7615 || USE_WID_5G==7915)
-	if (is_aband) {
-		/* 5g mumimo configs */
-		if (nvram_wlan_get_int(1, "mumimo")) {
-			fprintf(fp, "MUTxRxEnable=%d\n", 1);
-			fprintf(fp, "MuMimoDlEnable=%d\n", 1);
-			fprintf(fp, "MuMimoUlEnable=%d\n", 0);
-		} else {
-			fprintf(fp, "MUTxRxEnable=%d\n", 0);
-			fprintf(fp, "MuMimoDlEnable=%d\n", 0);
-			fprintf(fp, "MuMimoUlEnable=%d\n", 0);
-		}
-#if defined(BOARD_HAS_5G_11AX) && BOARD_HAS_5G_11AX
-		if (i_phy_mode == PHY_11AX_5G) {
-			/* 5g wifi6 mode */
-			fprintf(fp, "TWTSupport=%d\n", 0);
-			fprintf(fp, "PPEnable=%d\n", 1);
-			fprintf(fp, "MuOfdmaDlEnable=%d\n", 1);
-			fprintf(fp, "MuOfdmaUlEnable=%d\n", 0);
-			fprintf(fp, "SREnable=%d\n", 1);
-			fprintf(fp, "SRMode=%d\n", 0);
-			fprintf(fp, "SRSDEnable=%d\n", 1);
-		} else {
-			fprintf(fp, "TWTSupport=%d\n", 0);
-			fprintf(fp, "PPEnable=%d\n", 0);
-			fprintf(fp, "MuOfdmaDlEnable=%d\n", 0);
-			fprintf(fp, "MuOfdmaUlEnable=%d\n", 0);
-			fprintf(fp, "SREnable=%d\n", 0);
-			fprintf(fp, "SRMode=%d\n", 0);
-			fprintf(fp, "SRSDEnable=%d\n", 0);
-		}
-#endif
-	}
-#endif
+	if (!is_aband)
+		write_modern_2g_features(fp, i_phy_mode);
+	else
+		write_modern_5g_features(fp, i_phy_mode);
 
 #if defined (BOARD_MT7615_DBDC) || defined (BOARD_MT7915_DBDC)
 	fprintf(fp, "DBDC_MODE=%d\n", 1);
@@ -897,20 +1000,8 @@ gen_ralink_config(int is_soc_ap, int is_aband, int disable_autoscan)
 //	fprintf(fp, "KickStaRssiLow=%d\n", -98);
 
 	//AutoChannelSelect
-	if (is_aband) {
-#if defined(USE_WID_5G) && (USE_WID_5G==7915 || USE_WID_5G==7615)
-	i_val = (i_channel == 0) ? 3 : 0;
-#else
-	i_val = (i_channel == 0) ? 2 : 0;
-#endif
-	} else {
-#if defined(USE_WID_2G) && (USE_WID_2G==7915 || USE_WID_2G==7615)
-	i_val = (i_channel == 0) ? 3 : 0;
-#else
-	i_val = (i_channel == 0) ? 2 : 0;
-#endif
-	}
-	fprintf(fp, "AutoChannelSelect=%d\n", i_val);
+	i_acs_mode = get_auto_channel_select_mode(is_aband, i_channel);
+	fprintf(fp, "AutoChannelSelect=%d\n", i_acs_mode);
 
 	//AutoChannelSkipList
 	if (!is_aband)
@@ -1073,19 +1164,7 @@ gen_ralink_config(int is_soc_ap, int is_aband, int disable_autoscan)
 	fprintf(fp, "StreamModeMac1=\n");
 	fprintf(fp, "StreamModeMac2=\n");
 	fprintf(fp, "StreamModeMac3=\n");
-	if (is_aband) {
-#if defined (USE_WID_5G) && (USE_WID_5G==7615 || USE_WID_5G==7915)
-		fprintf(fp, "CSPeriod=%d\n", 6);
-#else
-		fprintf(fp, "CSPeriod=%d\n", 10);
-#endif
-	} else {
-#if defined (USE_WID_2G) && (USE_WID_2G==7615 || USE_WID_2G==7915)
-		fprintf(fp, "CSPeriod=%d\n", 6);
-#else
-		fprintf(fp, "CSPeriod=%d\n", 10);
-#endif
-	}
+	fprintf(fp, "CSPeriod=%d\n", get_cs_period(is_aband));
 	fprintf(fp, "RDRegion=%s\n", "FCC"); // used for Radar Detection
 	fprintf(fp, "StationKeepAlive=%d;%d\n", 0, 0);
 	fprintf(fp, "DfsLowerLimit=%d\n", 0);
@@ -1451,8 +1530,8 @@ gen_ralink_config(int is_soc_ap, int is_aband, int disable_autoscan)
 			i_VHTBW_MAX = 1;
 		//VHT_BW
 		i_val = nvram_wlan_get_int(is_aband, "HT_BW");
-#if (USE_WID_5G==7615 && !defined (BOARD_MT7615_DBDC)) || (USE_WID_5G==7915 && !defined (BOARD_MT7915_DBDC))
-		if (i_val == 3) //160Mhz
+#if defined (USE_WID_5G)
+		if (supports_vht160(is_aband) && i_val == 3) //160Mhz
 			fprintf(fp, "VHT_BW=%d\n", 2);
 		else
 #endif
@@ -1476,11 +1555,7 @@ gen_ralink_config(int is_soc_ap, int is_aband, int disable_autoscan)
 		fprintf(fp, "VHT_LDPC=%d\n", i_val);
 		
 		//VHT_STBC
-#if defined (USE_WID_5G) && (USE_WID_5G==7615 || USE_WID_5G == 7915)
-		fprintf(fp, "VHT_STBC=%d\n", i_val);
-#else
-		fprintf(fp, "VHT_STBC=%d\n", 0);
-#endif
+		fprintf(fp, "VHT_STBC=%d\n", (supports_vht_stbc(is_aband)) ? i_val : 0);
 	}
 #endif
 
@@ -1748,6 +1823,14 @@ gen_ralink_config(int is_soc_ap, int is_aband, int disable_autoscan)
 #endif
 
 	load_user_config(fp, "/etc/storage/wlan", (is_aband) ? "AP_5G.dat" : "AP.dat", NULL);
+
+	logmessage("WiFi profile",
+		"%s: modern=%d sku=%d acs=%d steering=%d rrm=%d wnm=%d cfg_bs=%d cfg_rrm=%d cfg_wnm=%d cfg_mbo=%d cfg_vow=%d cfg_whnat=%d ht_bss_coex=%d",
+		(is_aband) ? "5GHz" : "2.4GHz",
+		is_mt7615_or_mt7915_band(is_aband),
+		i_sku_enable, i_acs_mode, i_band_steering, i_rrm_enable, i_wnm_enable,
+		has_band_steering_support(), has_rrm_support(), has_wnm_support(),
+		has_mbo_support(), has_vow_support(), has_whnat_support(), i_ht_bss_coex);
 
 	fclose(fp);
 
