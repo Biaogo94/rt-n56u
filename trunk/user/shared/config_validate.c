@@ -49,7 +49,7 @@ static const struct config_schema default_schema[] = {
     CFG_INT("fw_enable_x", "0", "1", "1", "Firewall enable"),
 
     /* Sentinel */
-    { .key = NULL }
+    { NULL, CFG_TYPE_INT, NULL, NULL, NULL, NULL, NULL, 0 }
 };
 
 static const struct config_schema *custom_schema = NULL;

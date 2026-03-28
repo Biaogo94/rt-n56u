@@ -142,39 +142,41 @@ int config_is_valid_ssid(const char *ssid);
 int config_is_valid_wpa_key(const char *key);
 
 /*
- * Helper macros for defining config schema
+ * Helper macros for defining config schema (C89 compatible)
+ * Use explicit struct initialization to avoid designated initializers
  */
+
+/* Helper macro for schema entry */
+#define CFG_ENTRY(k, t, mi, ma, pat, def, desc, fl) \
+    { k, t, mi, ma, pat, def, desc, fl }
 
 /* Integer config with range */
 #define CFG_INT(key, min, max, def, desc) \
-    { .key = key, .type = CFG_TYPE_INT, .min_val = min, .max_val = max, \
-      .default_val = def, .description = desc }
+    CFG_ENTRY(key, CFG_TYPE_INT, min, max, NULL, def, desc, 0)
 
 /* String config with pattern */
 #define CFG_STRING(key, pat, def, desc) \
-    { .key = key, .type = CFG_TYPE_STRING, .pattern = pat, \
-      .default_val = def, .description = desc }
+    CFG_ENTRY(key, CFG_TYPE_STRING, NULL, NULL, pat, def, desc, 0)
 
 /* IP address config */
 #define CFG_IP(key, def, desc) \
-    { .key = key, .type = CFG_TYPE_IP, .default_val = def, .description = desc }
+    CFG_ENTRY(key, CFG_TYPE_IP, NULL, NULL, NULL, def, desc, 0)
 
 /* MAC address config */
 #define CFG_MAC(key, def, desc) \
-    { .key = key, .type = CFG_TYPE_MAC, .default_val = def, .description = desc }
+    CFG_ENTRY(key, CFG_TYPE_MAC, NULL, NULL, NULL, def, desc, 0)
 
 /* Port config */
 #define CFG_PORT(key, def, desc) \
-    { .key = key, .type = CFG_TYPE_PORT, .default_val = def, .description = desc }
+    CFG_ENTRY(key, CFG_TYPE_PORT, NULL, NULL, NULL, def, desc, 0)
 
 /* Boolean config (0/1) */
 #define CFG_BOOL(key, def, desc) \
-    { .key = key, .type = CFG_TYPE_BOOL, .default_val = def, .description = desc }
+    CFG_ENTRY(key, CFG_TYPE_BOOL, NULL, NULL, NULL, def, desc, 0)
 
 /* Required config */
 #define CFG_REQUIRED(schema) \
-    { .key = schema.key, .type = schema.type, .min_val = schema.min_val, \
-      .max_val = schema.max_val, .default_val = schema.default_val, \
-      .description = schema.description, .flags = CFG_FLAG_REQUIRED }
+    { schema.key, schema.type, schema.min_val, schema.max_val, \
+      schema.pattern, schema.default_val, schema.description, CFG_FLAG_REQUIRED }
 
 #endif /* _CONFIG_VALIDATE_H_ */
