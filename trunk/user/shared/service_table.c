@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include "service_table.h"
 #include "nvram_linux.h"
 #include "shutils.h"
@@ -37,168 +38,101 @@ extern int is_dnsmasq_run(void);
 static const struct service_desc service_table[] = {
     /* Core services */
 #if defined(APP_SYSLOGD)
-    {
-        .name = "syslogd",
-        .script = "/sbin/syslogd",
-        .pid_name = "syslogd",
-        .nvram_enable = NULL,  /* Always on */
-        .flags = SVC_FLAG_NONE,
-    },
+    { "syslogd", "/sbin/syslogd", "syslogd", NULL, 0, SVC_FLAG_NONE, NULL, NULL, NULL, NULL, NULL },
 #endif
 
 #if defined(APP_KLOGD)
-    {
-        .name = "klogd",
-        .script = "/sbin/klogd",
-        .pid_name = "klogd",
-        .nvram_enable = NULL,
-        .flags = SVC_FLAG_NONE,
-    },
+    { "klogd", "/sbin/klogd", "klogd", NULL, 0, SVC_FLAG_NONE, NULL, NULL, NULL, NULL, NULL },
 #endif
 
 #if defined(APP_DNSMASQ)
-    {
-        .name = "dnsmasq",
-        .script = "/usr/sbin/dnsmasq",
-        .pid_name = "dnsmasq",
-        .nvram_enable = NULL,
-        .flags = SVC_FLAG_NONE,
-    },
+    { "dnsmasq", "/usr/sbin/dnsmasq", "dnsmasq", NULL, 0, SVC_FLAG_NONE, NULL, NULL, NULL, NULL, NULL },
 #endif
 
 #if defined(APP_DROPBEAR) || defined(USE_SSH)
-    {
-        .name = "sshd",
-        .script = "/usr/bin/sshd.sh",
-        .pid_name = "dropbear",
-        .nvram_enable = "sshd_enable",
-        .flags = SVC_FLAG_SINGLETON | SVC_FLAG_RESTART_FW,
-    },
+    { "sshd", "/usr/bin/sshd.sh", "dropbear", "sshd_enable", 0, SVC_FLAG_SINGLETON | SVC_FLAG_RESTART_FW, NULL, NULL, NULL, NULL, NULL },
 #endif
 
 #if defined(APP_TTYD)
-    {
-        .name = "ttyd",
-        .script = "/usr/bin/ttyd.sh",
-        .pid_name = "ttyd",
-        .nvram_enable = "ttyd_enable",
-        .flags = SVC_FLAG_SINGLETON,
-    },
+    { "ttyd", "/usr/bin/ttyd.sh", "ttyd", "ttyd_enable", 0, SVC_FLAG_SINGLETON, NULL, NULL, NULL, NULL, NULL },
 #endif
 
 #if defined(APP_HTTPD)
-    {
-        .name = "httpd",
-        .pid_name = "httpd",
-        .nvram_enable = NULL,
-        .flags = SVC_FLAG_SINGLETON,
-    },
+    { "httpd", NULL, "httpd", NULL, 0, SVC_FLAG_SINGLETON, NULL, NULL, NULL, NULL, NULL },
 #endif
 
 #if defined(APP_CROND)
-    {
-        .name = "crond",
-        .script = "/usr/sbin/crond",
-        .pid_name = "crond",
-        .nvram_enable = "crond_enable",
-        .flags = SVC_FLAG_SINGLETON,
-    },
+    { "crond", "/usr/sbin/crond", "crond", "crond_enable", 0, SVC_FLAG_SINGLETON, NULL, NULL, NULL, NULL, NULL },
 #endif
 
 #if defined(APP_NTPCLIENT)
-    {
-        .name = "ntpclient",
-        .script = "/usr/sbin/ntpclient.sh",
-        .pid_name = "ntpclient",
-        .nvram_enable = "ntp_client_enable",
-        .flags = SVC_FLAG_LATE_START,
-    },
+    { "ntpclient", "/usr/sbin/ntpclient.sh", "ntpclient", "ntp_client_enable", 0, SVC_FLAG_LATE_START, NULL, NULL, NULL, NULL, NULL },
 #endif
 
 #if defined(APP_DDNS)
-    {
-        .name = "inadyn",
-        .script = "/usr/sbin/inadyn.sh",
-        .pid_name = "inadyn",
-        .nvram_enable = "ddns_enable_x",
-        .flags = SVC_FLAG_LATE_START,
-    },
+    { "inadyn", "/usr/sbin/inadyn.sh", "inadyn", "ddns_enable_x", 0, SVC_FLAG_LATE_START, NULL, NULL, NULL, NULL, NULL },
 #endif
 
 #if defined(APP_ARIA2)
-    {
-        .name = "aria2",
-        .script = "/usr/bin/aria2.sh",
-        .pid_name = "aria2c",
-        .nvram_enable = "aria2_enable",
-        .flags = SVC_FLAG_LATE_START,
-    },
+    { "aria2", "/usr/bin/aria2.sh", "aria2c", "aria2_enable", 0, SVC_FLAG_LATE_START, NULL, NULL, NULL, NULL, NULL },
 #endif
 
 #if defined(APP_FRP)
-    {
-        .name = "frpc",
-        .script = "/usr/bin/frpc.sh",
-        .pid_name = "frpc",
-        .nvram_enable = "frpc_enable",
-        .flags = SVC_FLAG_LATE_START,
-    },
-    {
-        .name = "frps",
-        .script = "/usr/bin/frps.sh",
-        .pid_name = "frps",
-        .nvram_enable = "frps_enable",
-        .flags = SVC_FLAG_LATE_START,
-    },
+    { "frpc", "/usr/bin/frpc.sh", "frpc", "frpc_enable", 0, SVC_FLAG_LATE_START, NULL, NULL, NULL, NULL, NULL },
+    { "frps", "/usr/bin/frps.sh", "frps", "frps_enable", 0, SVC_FLAG_LATE_START, NULL, NULL, NULL, NULL, NULL },
 #endif
 
 #if defined(APP_VLMCSD)
-    {
-        .name = "vlmcsd",
-        .script = "/usr/bin/vlmcsd.sh",
-        .pid_name = "vlmcsd",
-        .nvram_enable = "vlmcsd_enable",
-        .flags = SVC_FLAG_SINGLETON,
-    },
+    { "vlmcsd", "/usr/bin/vlmcsd.sh", "vlmcsd", "vlmcsd_enable", 0, SVC_FLAG_SINGLETON, NULL, NULL, NULL, NULL, NULL },
 #endif
 
 #if defined(APP_SHADOWSOCKS)
-    {
-        .name = "ss-redir",
-        .script = "/usr/bin/ss-redir.sh",
-        .pid_name = "ss-redir",
-        .nvram_enable = "ss_enable",
-        .flags = SVC_FLAG_RESTART_FW,
-    },
+    { "ss-redir", "/usr/bin/ss-redir.sh", "ss-redir", "ss_enable", 0, SVC_FLAG_RESTART_FW, NULL, NULL, NULL, NULL, NULL },
 #endif
 
     /* Sentinel */
-    { .name = NULL }
+    { NULL, NULL, NULL, NULL, 0, 0, NULL, NULL, NULL, NULL, NULL }
 };
 
 /* Runtime state */
 static struct service_entry *service_entries = NULL;
 static int service_count_cache = 0;
 
+void
+service_shutdown(void)
+{
+    if (service_entries) {
+        free(service_entries);
+        service_entries = NULL;
+    }
+
+    service_count_cache = 0;
+}
+
 int
 service_init(void)
 {
     int count = 0;
+    int i;
     const struct service_desc *desc;
 
     /* Count services */
     for (desc = service_table; desc->name; desc++)
         count++;
 
-    service_count_cache = count;
+    service_shutdown();
 
     /* Allocate entries */
+    service_count_cache = count;
+    if (count <= 0)
+        return 0;
+
     service_entries = calloc(count, sizeof(struct service_entry));
     if (!service_entries)
         return -1;
 
     /* Initialize entries */
-    for (int i = 0; i < count; i++) {
+    for (i = 0; i < count; i++) {
         service_entries[i].desc = &service_table[i];
         service_entries[i].is_running = 0;
         service_entries[i].last_start_result = 0;

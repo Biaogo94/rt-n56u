@@ -36,6 +36,11 @@ struct ipt_rule {
 };
 
 /*
+ * Initialize an iptables rule with safe defaults.
+ */
+void ipt_rule_init(struct ipt_rule *rule);
+
+/*
  * ip6tables rule structure (same fields as ipt_rule)
  */
 #define ip6t_rule ipt_rule
@@ -163,31 +168,12 @@ int svc_stop(const char *script);
 int svc_restart(const char *script);
 
 /*
- * Helper macros for common iptables operations
+ * Convenience helpers for common iptables operations.
  */
-
-/* Accept all traffic on interface */
-#define IPT_ACCEPT_IFACE(iface, chain) \
-    iptables_add_rule(&(struct ipt_rule){ .chain = chain, .in_iface = iface, .action = "ACCEPT" })
-
-/* Drop all traffic from source IP */
-#define IPT_DROP_SRC(src, chain) \
-    iptables_add_rule(&(struct ipt_rule){ .chain = chain, .src_ip = src, .action = "DROP" })
-
-/* Accept TCP port */
-#define IPT_ACCEPT_TCP_PORT(port, chain) \
-    iptables_add_rule(&(struct ipt_rule){ .chain = chain, .proto = "tcp", .dst_port = port, .action = "ACCEPT" })
-
-/* DNAT to internal host */
-#define IPT_DNAT(proto, dport, to_ip, to_port) \
-    iptables_add_rule(&(struct ipt_rule){ \
-        .table = "nat", .chain = "PREROUTING", .proto = proto, \
-        .dst_port = dport, .action = "DNAT", \
-        .extra = "--to-destination " to_ip ":" to_port })
-
-/* MASQUERADE on output interface */
-#define IPT_MASQUERADE(iface) \
-    iptables_add_rule(&(struct ipt_rule){ \
-        .table = "nat", .chain = "POSTROUTING", .out_iface = iface, .action = "MASQUERADE" })
+int iptables_accept_iface(const char *iface, const char *chain);
+int iptables_drop_src(const char *src, const char *chain);
+int iptables_accept_tcp_port(const char *port, const char *chain);
+int iptables_dnat(const char *proto, const char *dport, const char *to_ip, const char *to_port);
+int iptables_masquerade(const char *iface);
 
 #endif /* _CMD_EXEC_H_ */

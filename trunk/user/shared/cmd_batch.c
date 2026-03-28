@@ -29,6 +29,7 @@ int
 cmd_batch_add(struct cmd_batch *batch, const char *cmd)
 {
     int cmd_len;
+    int new_len;
 
     if (!batch || !cmd || !cmd[0])
         return -1;
@@ -42,7 +43,7 @@ cmd_batch_add(struct cmd_batch *batch, const char *cmd)
         return -1;
 
     /* Calculate new total length */
-    int new_len = batch->total_len;
+    new_len = batch->total_len;
     if (new_len > 0)
         new_len += 4;  /* " && " separator */
     new_len += cmd_len;
@@ -69,6 +70,7 @@ int
 cmd_batch_add_independent(struct cmd_batch *batch, const char *cmd)
 {
     int cmd_len;
+    int new_len;
 
     if (!batch || !cmd || !cmd[0])
         return -1;
@@ -82,7 +84,7 @@ cmd_batch_add_independent(struct cmd_batch *batch, const char *cmd)
         return -1;
 
     /* Calculate new total length */
-    int new_len = batch->total_len;
+    new_len = batch->total_len;
     if (new_len > 0)
         new_len += 2;  /* "; " separator */
     new_len += cmd_len;

@@ -146,12 +146,16 @@ static unsigned int get_time_sec(void)
  */
 static int cache_entry_expired(struct nvram_cache_entry *entry)
 {
+    unsigned int now;
+    unsigned int elapsed;
+    unsigned int effective_ttl;
+
     if (cache_ttl == 0)
         return 1;
 
-    unsigned int now = get_time_sec();
-    unsigned int elapsed = now - entry->timestamp;
-    unsigned int effective_ttl = cache_ttl / 1000; /* Convert ms to sec */
+    now = get_time_sec();
+    elapsed = now - entry->timestamp;
+    effective_ttl = cache_ttl / 1000; /* Convert ms to sec */
 
     /* Use TTL multiplier for entries with many hits */
     if (entry->ttl_multi > 0 && effective_ttl > 0) {
@@ -294,6 +298,9 @@ nvram_cache_shutdown(void)
 char *
 nvram_cache_get(const char *name)
 {
+    struct nvram_cache_entry *entry;
+    char *value;
+
     /* Safety checks - fallback to direct NVRAM */
     if (!name || !name[0])
         return NULL;
@@ -308,7 +315,7 @@ nvram_cache_get(const char *name)
 
     CACHE_LOCK();
 
-    struct nvram_cache_entry *entry = cache_find_entry(name);
+    entry = cache_find_entry(name);
 
     if (entry && !cache_entry_expired(entry)) {
         /* Cache hit */
@@ -324,7 +331,7 @@ nvram_cache_get(const char *name)
     CACHE_UNLOCK();
 
     /* Get from NVRAM */
-    char *value = nvram_get_(name);
+    value = nvram_get_(name);
     if (!value)
         return NULL;
 
@@ -349,6 +356,11 @@ nvram_cache_get_int(const char *name)
 void
 nvram_cache_update(const char *name, const char *value)
 {
+    size_t key_len;
+    size_t value_len;
+    unsigned int hash;
+    struct nvram_cache_entry *entry;
+
     /* Safety checks */
     if (!name || !name[0])
         return;
@@ -356,8 +368,8 @@ nvram_cache_update(const char *name, const char *value)
     if (!cache_enabled || !cache_initialized)
         return;
 
-    size_t key_len = strlen(name);
-    size_t value_len = value ? strlen(value) : 0;
+    key_len = strlen(name);
+    value_len = value ? strlen(value) : 0;
 
     if (key_len >= NVRAM_CACHE_KEY_MAX)
         return;
@@ -367,8 +379,8 @@ nvram_cache_update(const char *name, const char *value)
 
     CACHE_LOCK();
 
-    unsigned int hash = cache_hash(name);
-    struct nvram_cache_entry *entry = cache_find_entry(name);
+    hash = cache_hash(name);
+    entry = cache_find_entry(name);
 
     if (entry) {
         /* Update existing entry */
@@ -401,18 +413,21 @@ nvram_cache_update(const char *name, const char *value)
 void
 nvram_cache_invalidate(const char *name)
 {
+    struct nvram_cache_entry *entry;
+    unsigned int i;
+
     CACHE_LOCK();
 
     if (name) {
         /* Invalidate specific key */
-        struct nvram_cache_entry *entry = cache_find_entry(name);
+        entry = cache_find_entry(name);
         if (entry) {
             entry->valid = 0;
             cache_stats.invalidations++;
         }
     } else {
         /* Invalidate all */
-        for (unsigned int i = 0; i < NVRAM_CACHE_SIZE; i++) {
+        for (i = 0; i < NVRAM_CACHE_SIZE; i++) {
             cache_entries[i].valid = 0;
         }
         cache_stats.invalidations += NVRAM_CACHE_SIZE;
@@ -477,9 +492,12 @@ nvram_cache_prefetch_hotkeys(void)
  */
 int nvram_cache_get_efficiency(void)
 {
+    unsigned long total;
+    int efficiency;
+
     CACHE_LOCK();
-    unsigned long total = cache_stats.hits + cache_stats.misses;
-    int efficiency = total > 0 ? (int)((cache_stats.hits * 100) / total) : 0;
+    total = cache_stats.hits + cache_stats.misses;
+    efficiency = total > 0 ? (int)((cache_stats.hits * 100) / total) : 0;
     CACHE_UNLOCK();
     return efficiency;
 }

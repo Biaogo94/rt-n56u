@@ -193,6 +193,7 @@ int
 config_is_valid_wpa_key(const char *key)
 {
     int len;
+    int i;
 
     if (!key || !key[0])
         return 0;
@@ -202,7 +203,7 @@ config_is_valid_wpa_key(const char *key)
     /* WPA-PSK: 8-63 characters or 64 hex digits */
     if (len == 64) {
         /* Check if all hex */
-        for (int i = 0; i < 64; i++) {
+        for (i = 0; i < 64; i++) {
             if (!isxdigit(key[i]))
                 return 0;
         }

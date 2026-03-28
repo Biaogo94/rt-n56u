@@ -10,6 +10,12 @@
 #ifndef _LOGGING_H_
 #define _LOGGING_H_
 
+#include <stddef.h>
+
+#ifndef __func__
+#define __func__ __FUNCTION__
+#endif
+
 /*
  * Log levels
  */

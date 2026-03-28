@@ -15,6 +15,7 @@
 #ifndef _CMD_BATCH_H_
 #define _CMD_BATCH_H_
 
+#include <stdio.h>
 #include <stddef.h>
 
 /*

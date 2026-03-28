@@ -19,6 +19,15 @@
 /* Maximum iptables command length */
 #define IPT_CMD_MAX 1024
 
+void
+ipt_rule_init(struct ipt_rule *rule)
+{
+    if (!rule)
+        return;
+
+    memset(rule, 0, sizeof(*rule));
+}
+
 /* Build iptables command string */
 static int
 build_ipt_cmd(char *cmd, size_t cmd_size, const char *cmd_type,
@@ -79,6 +88,83 @@ iptables_add_rule(const struct ipt_rule *rule)
         return -1;
 
     return system(cmd);
+}
+
+int
+iptables_accept_iface(const char *iface, const char *chain)
+{
+    struct ipt_rule rule;
+
+    ipt_rule_init(&rule);
+    rule.chain = chain;
+    rule.in_iface = iface;
+    rule.action = "ACCEPT";
+
+    return iptables_add_rule(&rule);
+}
+
+int
+iptables_drop_src(const char *src, const char *chain)
+{
+    struct ipt_rule rule;
+
+    ipt_rule_init(&rule);
+    rule.chain = chain;
+    rule.src_ip = src;
+    rule.action = "DROP";
+
+    return iptables_add_rule(&rule);
+}
+
+int
+iptables_accept_tcp_port(const char *port, const char *chain)
+{
+    struct ipt_rule rule;
+
+    ipt_rule_init(&rule);
+    rule.chain = chain;
+    rule.proto = "tcp";
+    rule.dst_port = port;
+    rule.action = "ACCEPT";
+
+    return iptables_add_rule(&rule);
+}
+
+int
+iptables_dnat(const char *proto, const char *dport, const char *to_ip, const char *to_port)
+{
+    struct ipt_rule rule;
+    char extra[128];
+
+    if (!to_ip || !to_port)
+        return -1;
+
+    if (snprintf(extra, sizeof(extra), "--to-destination %s:%s", to_ip, to_port) >= (int)sizeof(extra))
+        return -1;
+
+    ipt_rule_init(&rule);
+    rule.table = "nat";
+    rule.chain = "PREROUTING";
+    rule.proto = proto;
+    rule.dst_port = dport;
+    rule.action = "DNAT";
+    rule.extra = extra;
+
+    return iptables_add_rule(&rule);
+}
+
+int
+iptables_masquerade(const char *iface)
+{
+    struct ipt_rule rule;
+
+    ipt_rule_init(&rule);
+    rule.table = "nat";
+    rule.chain = "POSTROUTING";
+    rule.out_iface = iface;
+    rule.action = "MASQUERADE";
+
+    return iptables_add_rule(&rule);
 }
 
 int
@@ -175,7 +261,7 @@ ip6tables_del_rule(const struct ip6t_rule *rule)
 }
 
 int
-ip6tables_flush_chain6(const char *table, const char *chain)
+ip6tables_flush_chain(const char *table, const char *chain)
 {
     char cmd[256];
     int len;
@@ -199,6 +285,7 @@ int
 proc_signal(const char *name, int sig)
 {
     pid_t *pids;
+    pid_t *p;
     int count = 0;
 
     if (!name)
@@ -208,7 +295,7 @@ proc_signal(const char *name, int sig)
     if (!pids)
         return -1;
 
-    for (pid_t *p = pids; *p; p++) {
+    for (p = pids; *p; p++) {
         if (kill(*p, sig) == 0)
             count++;
     }
@@ -250,8 +337,9 @@ proc_get_pid(const char *name)
         return -1;
 
     pids = find_pid_by_name((char *)name);
-    if (pids && pids[0]) {
-        result = pids[0];
+    if (pids) {
+        if (pids[0])
+            result = pids[0];
         free(pids);
     }
 

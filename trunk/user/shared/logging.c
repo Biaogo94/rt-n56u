@@ -17,13 +17,13 @@
 
 /* Default configuration */
 static struct log_config log_cfg = {
-    .min_level = LOG_LEVEL_INFO,
-    .log_to_console = 1,
-    .log_to_syslog = 1,
-    .log_to_file = 0,
-    .log_file = "/tmp/router.log",
-    .max_log_size = 64,  /* 64 KB */
-    .category_mask = 0xFFFFFFFF,  /* All categories enabled */
+    LOG_LEVEL_INFO,
+    1,
+    1,
+    0,
+    "/tmp/router.log",
+    64,
+    0xFFFFFFFF
 };
 
 static int log_initialized = 0;
@@ -199,7 +199,7 @@ log_hexdump(log_level_t level, log_category_t cat,
         return;
 
     if (title)
-        log_msg(level, cat, func, line, "%s (%zu bytes)", title, len);
+        log_msg(level, cat, func, line, "%s (%lu bytes)", title, (unsigned long)len);
 
     for (offset = 0; offset < (int)len; offset += 16) {
         int pos = 0;

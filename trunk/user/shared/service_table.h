@@ -10,6 +10,8 @@
 #ifndef _SERVICE_TABLE_H_
 #define _SERVICE_TABLE_H_
 
+#include <stddef.h>
+
 /*
  * Service flags
  */
@@ -51,6 +53,11 @@ struct service_entry {
  * Initialize service framework
  */
 int service_init(void);
+
+/*
+ * Release runtime service state.
+ */
+void service_shutdown(void);
 
 /*
  * Find service by name
@@ -119,22 +126,19 @@ int service_count(void);
 
 /* Simple script-based service */
 #define SERVICE_SIMPLE(name, script, pidname, nvram) \
-    { .name = name, .script = script, .pid_name = pidname, .nvram_enable = nvram }
+    { name, script, pidname, nvram, 0, SVC_FLAG_NONE, NULL, NULL, NULL, NULL, NULL }
 
 /* Service with custom start/stop */
 #define SERVICE_CUSTOM(name, start_fn, stop_fn, check_fn, nvram) \
-    { .name = name, .start_func = start_fn, .stop_func = stop_fn, \
-      .check_running = check_fn, .nvram_enable = nvram }
+    { name, NULL, NULL, nvram, 0, SVC_FLAG_NONE, check_fn, start_fn, stop_fn, NULL, NULL }
 
 /* Service that requires firewall restart */
 #define SERVICE_FW(name, script, pidname, nvram) \
-    { .name = name, .script = script, .pid_name = pidname, \
-      .nvram_enable = nvram, .flags = SVC_FLAG_RESTART_FW }
+    { name, script, pidname, nvram, 0, SVC_FLAG_RESTART_FW, NULL, NULL, NULL, NULL, NULL }
 
 /* Service that requires network restart */
 #define SERVICE_NET(name, script, pidname, nvram) \
-    { .name = name, .script = script, .pid_name = pidname, \
-      .nvram_enable = nvram, .flags = SVC_FLAG_RESTART_NET }
+    { name, script, pidname, nvram, 0, SVC_FLAG_RESTART_NET, NULL, NULL, NULL, NULL, NULL }
 
 /*
  * Convenience functions for common patterns

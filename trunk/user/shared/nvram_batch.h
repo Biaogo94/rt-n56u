@@ -26,9 +26,9 @@ struct nvram_batch_item {
     const char *key;
     int type;                   /* NVRAM_TYPE_INT or NVRAM_TYPE_STRING */
     union {
-        int *int_val;
-        char **str_val;
-        const char *set_val;    /* For set operations */
+        int *int_val;           /* For integer get operations */
+        int set_int_val;        /* For integer set operations */
+        const char *set_str_val;/* For string set operations */
     } value;
     union {
         struct {
@@ -71,24 +71,16 @@ int nvram_set_batch(struct nvram_batch_item *items, int count);
  */
 int nvram_set_batch_commit(struct nvram_batch_item *items, int count);
 
-/* Helper macros for batch operations */
-
-/* Define an int item for batch get */
-#define NVRAM_GET_INT(key, ptr, defval, minval, maxval) \
-    { .key = key, .type = NVRAM_TYPE_INT, .value.int_val = ptr, \
-      .param.i = { .def_val = defval, .min_val = minval, .max_val = maxval } }
-
-/* Define a string item for batch get */
-#define NVRAM_GET_STR(key, buf, bufsize, defval) \
-    { .key = key, .type = NVRAM_TYPE_STRING, .value.str_val = &(buf), \
-      .param.s = { .buf = buf, .buf_size = bufsize, .def_val = defval } }
-
-/* Define an int item for batch set */
-#define NVRAM_SET_INT(key, val) \
-    { .key = key, .type = NVRAM_TYPE_INT, .value.set_val = (const char *)(long)val }
-
-/* Define a string item for batch set */
-#define NVRAM_SET_STR(key, val) \
-    { .key = key, .type = NVRAM_TYPE_STRING, .value.set_val = val }
+/*
+ * Initialize batch items without relying on C99 designated initializers.
+ */
+void nvram_batch_item_init_int_get(struct nvram_batch_item *item,
+    const char *key, int *ptr, int defval, int minval, int maxval);
+void nvram_batch_item_init_str_get(struct nvram_batch_item *item,
+    const char *key, char *buf, size_t bufsize, const char *defval);
+void nvram_batch_item_init_int_set(struct nvram_batch_item *item,
+    const char *key, int val);
+void nvram_batch_item_init_str_set(struct nvram_batch_item *item,
+    const char *key, const char *val);
 
 #endif /* _NVRAM_BATCH_H_ */
