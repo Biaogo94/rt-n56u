@@ -24,9 +24,9 @@ static const struct config_schema default_schema[] = {
     /* Network settings */
     CFG_IP("lan_ipaddr", "192.168.2.1", "LAN IP address"),
     CFG_IP("lan_netmask", "255.255.255.0", "LAN netmask"),
-    CFG_STRING("lan_gateway", "", "LAN gateway"),
-    CFG_STRING("lan_dns1", "", "Primary DNS server"),
-    CFG_STRING("lan_dns2", "", "Secondary DNS server"),
+    CFG_STRING("lan_gateway", NULL, "", "LAN gateway"),
+    CFG_STRING("lan_dns1", NULL, "", "Primary DNS server"),
+    CFG_STRING("lan_dns2", NULL, "", "Secondary DNS server"),
 
     /* WAN settings */
     CFG_INT("wan_proto", "0", "3", "0", "WAN protocol (0=dhcp, 1=static, 2=pppoe, 3=disabled)"),
@@ -40,8 +40,8 @@ static const struct config_schema default_schema[] = {
     CFG_INT("http_access", "0", "2", "0", "HTTP access mode"),
 
     /* WiFi settings */
-    CFG_STRING("wl_ssid", "", "5GHz WiFi SSID"),
-    CFG_STRING("rt_ssid", "", "2.4GHz WiFi SSID"),
+    CFG_STRING("wl_ssid", NULL, "", "5GHz WiFi SSID"),
+    CFG_STRING("rt_ssid", NULL, "", "2.4GHz WiFi SSID"),
     CFG_INT("wl_channel", "0", "165", "0", "5GHz WiFi channel"),
     CFG_INT("rt_channel", "0", "13", "0", "2.4GHz WiFi channel"),
 
