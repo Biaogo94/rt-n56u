@@ -95,7 +95,7 @@ void log_msg(log_level_t level, log_category_t cat,
 #define LOG_WRN(cat, fmt, ...) \
     log_msg(LOG_LEVEL_WARN, cat, __func__, __LINE__, fmt, ##__VA_ARGS__)
 
-#define LOG_ERR(cat, fmt, ...) \
+#define LOG_ERROR_MSG(cat, fmt, ...) \
     log_msg(LOG_LEVEL_ERROR, cat, __func__, __LINE__, fmt, ##__VA_ARGS__)
 
 /*
