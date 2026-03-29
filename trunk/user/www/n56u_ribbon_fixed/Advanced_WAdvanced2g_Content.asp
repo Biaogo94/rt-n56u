@@ -77,6 +77,12 @@ function initial(){
 	if (support_2g_turbo_qam())
 		showhide_div('row_turbo_qam', 1);
 
+	if (support_2g_11kv())
+		showhide_div("row_80211kv", 1);
+
+	if (support_2g_11r())
+		showhide_div("row_80211r", 1);
+
 	load_body();
 
 	change_wmm();
@@ -341,6 +347,24 @@ function done_validating(action){
                                                 <select name="rt_HT_AMSDU" class="input">
                                                     <option value="0" <% nvram_match_x("", "rt_HT_AMSDU", "0", "selected"); %>><#btn_Disable#> (*)</option>
                                                     <option value="1" <% nvram_match_x("", "rt_HT_AMSDU", "1", "selected"); %>><#btn_Enable#></option>
+                                                </select>
+                                            </td>
+                                        </tr>
+                                        <tr id="row_80211kv" style="display:none">
+                                            <th><#WLANConfig11n_80211kv#></th>
+                                            <td>
+                                                <select name="rt_HT_80211KV" class="input">
+                                                    <option value="0" <% nvram_match_x("", "rt_HT_80211KV", "0", "selected"); %>><#btn_Disable#></option>
+                                                    <option value="1" <% nvram_match_x("", "rt_HT_80211KV", "1", "selected"); %>><#btn_Enable#> (*)</option>
+                                                </select>
+                                            </td>
+                                        </tr>
+                                        <tr id="row_80211r" style="display:none">
+                                            <th><#WLANConfig11n_80211r#></th>
+                                            <td>
+                                                <select name="rt_HT_80211R" class="input">
+                                                    <option value="0" <% nvram_match_x("", "rt_HT_80211R", "0", "selected"); %>><#btn_Disable#> (*)</option>
+                                                    <option value="1" <% nvram_match_x("", "rt_HT_80211R", "1", "selected"); %>><#btn_Enable#></option>
                                                 </select>
                                             </td>
                                         </tr>

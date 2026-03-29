@@ -232,6 +232,12 @@ struct nvram_pair router_defaults[] = {
 #endif
 	{ "wl_HT_MpduDensity", "5" },
 	{ "wl_HT_AutoBA", "1" },
+#if defined (CONFIG_DOT11K_RRM_SUPPORT) && defined (CONFIG_WNM_SUPPORT) && defined (USE_WID_5G) && (USE_WID_5G==7615 || USE_WID_5G==7915)
+	{ "wl_HT_80211KV", "1" },
+#else
+	{ "wl_HT_80211KV", "0" },
+#endif
+	{ "wl_HT_80211R", "0" },
 	{ "wl_VgaClamp", "0" },
 	{ "wl_KickStaRssiLow", "0" },
 	{ "wl_AssocReqRssiThres", "0" },
@@ -336,6 +342,12 @@ struct nvram_pair router_defaults[] = {
 	{ "rt_ldpc", "0" },
 #endif
 	{ "rt_HT_AutoBA", "1" },
+#if defined (CONFIG_DOT11K_RRM_SUPPORT) && defined (CONFIG_WNM_SUPPORT) && defined (USE_WID_2G) && (USE_WID_2G==7615 || USE_WID_2G==7915)
+	{ "rt_HT_80211KV", "1" },
+#else
+	{ "rt_HT_80211KV", "0" },
+#endif
+	{ "rt_HT_80211R", "0" },
 	{ "rt_VgaClamp", "0" },
 	{ "rt_KickStaRssiLow", "0" },
 	{ "rt_AssocReqRssiThres", "0" },

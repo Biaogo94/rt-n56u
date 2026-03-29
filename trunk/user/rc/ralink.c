@@ -630,6 +630,16 @@ has_wnm_support(void)
 }
 
 static int
+has_ft_support(void)
+{
+#if defined (CONFIG_DOT11R_FT_SUPPORT)
+	return 1;
+#else
+	return 0;
+#endif
+}
+
+static int
 has_mbo_support(void)
 {
 #if defined (CONFIG_MBO_SUPPORT)
@@ -790,33 +800,54 @@ get_band_steering_mode(void)
 }
 
 static int
-get_rrm_enable(int is_aband, int band_steering)
+supports_kv(int is_aband)
 {
 	if (!has_rrm_support() || !has_wnm_support())
 		return 0;
 
-	if (!band_steering)
+	if (!is_mt7615_or_mt7915_band(is_aband))
 		return 0;
 
-	if (is_mt7615_or_mt7915_band(is_aband))
-		return 1;
-
-	return 0;
+	return 1;
 }
 
 static int
-get_wnm_enable(int is_aband, int band_steering)
+supports_ft(int is_aband)
 {
-	if (!has_rrm_support() || !has_wnm_support())
+	if (!has_ft_support())
 		return 0;
 
-	if (!band_steering)
+	if (!is_mt7615_or_mt7915_band(is_aband))
 		return 0;
 
-	if (is_mt7615_or_mt7915_band(is_aband))
-		return 1;
+	return 1;
+}
 
-	return 0;
+static int
+get_rrm_enable(int is_aband)
+{
+	if (!supports_kv(is_aband))
+		return 0;
+
+	return nvram_wlan_get_int(is_aband, "HT_80211KV") ? 1 : 0;
+}
+
+static int
+get_wnm_enable(int is_aband)
+{
+	if (!supports_kv(is_aband))
+		return 0;
+
+	return nvram_wlan_get_int(is_aband, "HT_80211KV") ? 1 : 0;
+}
+
+static int
+get_ft_enable(int is_aband)
+{
+	if (!supports_ft(is_aband))
+		return 0;
+
+	return nvram_wlan_get_int(is_aband, "HT_80211R") ? 1 : 0;
 }
 
 static int
@@ -825,7 +856,7 @@ gen_ralink_config(int is_soc_ap, int is_aband, int disable_autoscan)
 	FILE *fp;
 	char list[2048], *p_str, *c_val_mbss[2];
 	int i, i_num,  i_val, i_wmm, i_ldpc;
-	int i_acs_mode, i_band_steering, i_ht_bss_coex, i_rrm_enable, i_sku_enable, i_wnm_enable;
+	int i_acs_mode, i_band_steering, i_ft_enable, i_ht_bss_coex, i_rrm_enable, i_sku_enable, i_wnm_enable;
 	int i_mode_x, i_phy_mode, i_gfe, i_auth, i_encr, i_wep, i_wds;
 	int i_ssid_num, i_channel, i_channel_max, i_HTBW_MAX;
 	int i_stream_tx, i_stream_rx, i_mphy, i_mmcs, i_fphy[2], i_val_mbss[2];
@@ -835,10 +866,11 @@ gen_ralink_config(int is_soc_ap, int is_aband, int disable_autoscan)
 	i_acs_mode = 0;
 	i_channel_max = 13;
 	i_band_steering = get_band_steering_mode();
+	i_ft_enable = get_ft_enable(is_aband);
 	i_ht_bss_coex = 0;
-	i_rrm_enable = get_rrm_enable(is_aband, i_band_steering);
+	i_rrm_enable = get_rrm_enable(is_aband);
 	i_sku_enable = 0;
-	i_wnm_enable = get_wnm_enable(is_aband, i_band_steering);
+	i_wnm_enable = get_wnm_enable(is_aband);
 
 	if (is_soc_ap) {
 		dat_file = "/etc/Wireless/RT2860/RT2860AP.dat";
@@ -974,6 +1006,11 @@ gen_ralink_config(int is_soc_ap, int is_aband, int disable_autoscan)
 	fprintf(fp, "KernelRps=%d\n", 0);
 	fprintf(fp, "RRMEnable=%d\n", i_rrm_enable);
 	fprintf(fp, "MboSupport=%d\n", 0);
+	if (supports_ft(is_aband)) {
+		fprintf(fp, "FtSupport=%d\n", i_ft_enable);
+		fprintf(fp, "FtOtd=%d\n", 0);
+		fprintf(fp, "FtRic=%d\n", 1);
+	}
 
 #if defined (USE_MT7615_AP) || defined (USE_MT7915_AP)
 	fprintf(fp, "VOW_RX_En=%d\n", 1);
@@ -1825,11 +1862,11 @@ gen_ralink_config(int is_soc_ap, int is_aband, int disable_autoscan)
 	load_user_config(fp, "/etc/storage/wlan", (is_aband) ? "AP_5G.dat" : "AP.dat", NULL);
 
 	logmessage("WiFi profile",
-		"%s: modern=%d sku=%d acs=%d steering=%d rrm=%d wnm=%d cfg_bs=%d cfg_rrm=%d cfg_wnm=%d cfg_mbo=%d cfg_vow=%d cfg_whnat=%d ht_bss_coex=%d",
+		"%s: modern=%d sku=%d acs=%d steering=%d rrm=%d wnm=%d ft=%d cfg_bs=%d cfg_rrm=%d cfg_wnm=%d cfg_ft=%d cfg_mbo=%d cfg_vow=%d cfg_whnat=%d ht_bss_coex=%d",
 		(is_aband) ? "5GHz" : "2.4GHz",
 		is_mt7615_or_mt7915_band(is_aband),
-		i_sku_enable, i_acs_mode, i_band_steering, i_rrm_enable, i_wnm_enable,
-		has_band_steering_support(), has_rrm_support(), has_wnm_support(),
+		i_sku_enable, i_acs_mode, i_band_steering, i_rrm_enable, i_wnm_enable, i_ft_enable,
+		has_band_steering_support(), has_rrm_support(), has_wnm_support(), has_ft_support(),
 		has_mbo_support(), has_vow_support(), has_whnat_support(), i_ht_bss_coex);
 
 	fclose(fp);

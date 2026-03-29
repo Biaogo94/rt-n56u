@@ -2392,6 +2392,26 @@ ej_firmware_caps_hook(int eid, webs_t wp, int argc, char **argv)
 #else
 	int has_2g_11ax = 0;
 #endif
+#if defined (CONFIG_DOT11K_RRM_SUPPORT) && defined (CONFIG_WNM_SUPPORT) && defined (USE_WID_5G) && (USE_WID_5G==7615 || USE_WID_5G==7915)
+	int has_5g_11kv = 1;
+#else
+	int has_5g_11kv = 0;
+#endif
+#if defined (CONFIG_DOT11K_RRM_SUPPORT) && defined (CONFIG_WNM_SUPPORT) && defined (USE_WID_2G) && (USE_WID_2G==7615 || USE_WID_2G==7915)
+	int has_2g_11kv = 1;
+#else
+	int has_2g_11kv = 0;
+#endif
+#if defined (CONFIG_DOT11R_FT_SUPPORT) && defined (USE_WID_5G) && (USE_WID_5G==7615 || USE_WID_5G==7915)
+	int has_5g_11r = 1;
+#else
+	int has_5g_11r = 0;
+#endif
+#if defined (CONFIG_DOT11R_FT_SUPPORT) && defined (USE_WID_2G) && (USE_WID_2G==7615 || USE_WID_2G==7915)
+	int has_2g_11r = 1;
+#else
+	int has_2g_11r = 0;
+#endif
 
 	websWrite(wp,
 		"function found_utl_hdparm() { return %d;}\n"
@@ -2477,7 +2497,11 @@ ej_firmware_caps_hook(int eid, webs_t wp, int argc, char **argv)
 		"function support_lan_ap_isolate() { return %d;}\n"
 		"function support_5g_160mhz() { return %d;}\n"
 		"function support_5g_11ax() { return %d;}\n"
-		"function support_2g_11ax() { return %d;}\n",
+		"function support_2g_11ax() { return %d;}\n"
+		"function support_5g_11kv() { return %d;}\n"
+		"function support_2g_11kv() { return %d;}\n"
+		"function support_5g_11r() { return %d;}\n"
+		"function support_2g_11r() { return %d;}\n",
 		has_ipv6,
 		has_ipv6_ppe,
 		has_ipv4_ppe,
@@ -2514,7 +2538,11 @@ ej_firmware_caps_hook(int eid, webs_t wp, int argc, char **argv)
 		has_lan_ap_isolate,
 		has_5g_160mhz,
 		has_5g_11ax,
-		has_2g_11ax
+		has_2g_11ax,
+		has_5g_11kv,
+		has_2g_11kv,
+		has_5g_11r,
+		has_2g_11r
 	);
 
 	return 0;
