@@ -134,7 +134,7 @@ void clear_all_addr6(void)
 
 void clear_all_route6(void)
 {
-	system("ip -6 route flush scope all");
+	eval("ip", "-6", "route", "flush", "scope", "all");
 }
 
 void full_restart_ipv6(int ipv6_type_old)

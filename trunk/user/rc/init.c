@@ -133,7 +133,7 @@ catch_sig_fatal(int sig)
 	sync();
 
 #ifdef MTD_FLASH_32M_REBOOT_BUG
-	system("/bin/mtd_write -r unlock mtd1");
+	eval("/bin/mtd_write", "-r", "unlock", "mtd1");
 #else
 	reboot(RB_AUTOBOOT);
 #endif
@@ -482,9 +482,9 @@ init_main_loop(void)
 	/* Basic initialization */
 	init_time();
 #if BOARD_RAM_SIZE > 32
-	system("dev_init.sh");
+	eval("dev_init.sh");
 #else
-	system("dev_init.sh -l");
+	eval("dev_init.sh", "-l");
 #endif
 	init_nodes();
 	init_mdev();

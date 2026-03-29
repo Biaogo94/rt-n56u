@@ -372,8 +372,11 @@ start_xupnpd(char *wan_ifname)
 		
 		if (has_daemon)
 			eval("/usr/bin/xupnpd");
-		else
-			system("/usr/bin/xupnpd &");
+		else {
+			pid_t pid;
+			char *xupnpd_argv[] = { "/usr/bin/xupnpd", NULL };
+			_eval(xupnpd_argv, NULL, 0, &pid);
+		}
 	}
 }
 #endif
@@ -472,7 +475,7 @@ flush_conntrack_table(char *ip)
 void
 flush_route_caches(void)
 {
-	system("ip route flush cache");
+	eval("ip", "route", "flush", "cache");
 }
 
 void
