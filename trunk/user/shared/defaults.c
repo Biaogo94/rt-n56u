@@ -19,6 +19,7 @@
 #include "nvram_linux.h"
 #include "netutils.h"
 #include "defaults.h"
+#include "wireless_caps.h"
 
 #define STR1(x) #x
 #define STR(x) STR1(x)
@@ -157,7 +158,7 @@ struct nvram_pair router_defaults[] = {
 	/* 5G Wireless parameters */
 	{ "wl_country_code", DEF_WLAN_5G_CC },		/* Country Code (default obtained from driver) */
 	{ "wl_ssid", DEF_WLAN_5G_SSID },		/* Service set ID (network name) */
-#if defined(BOARD_HAS_5G_11AX) && BOARD_HAS_5G_11AX
+#if WL_CAP_5G_11AX
 	{ "wl_gmode", "5" },			/* A/N/AC/AX Mixed */
 #elif BOARD_HAS_5G_11AC
 	{ "wl_gmode", "4" },			/* A/N/AC Mixed */
@@ -222,7 +223,7 @@ struct nvram_pair router_defaults[] = {
 	{ "wl_greenap", "0" },
 	{ "wl_ldpc", "3" },
 	{ "wl_HT_RDG", "0" },
-#if defined (USE_WID_5G) && (USE_WID_5G==7615 || USE_WID_5G==7915)
+#if WL_CAP_5G_MODERN
 	{ "wl_HT_AMSDU", "1" },
 	{ "wl_HT_BAWinSize", "256" },
 	{ "wl_mumimo", "1" },
@@ -232,7 +233,7 @@ struct nvram_pair router_defaults[] = {
 #endif
 	{ "wl_HT_MpduDensity", "5" },
 	{ "wl_HT_AutoBA", "1" },
-#if defined (CONFIG_DOT11K_RRM_SUPPORT) && defined (CONFIG_WNM_SUPPORT) && defined (USE_WID_5G) && (USE_WID_5G==7615 || USE_WID_5G==7915)
+#if WL_CAP_5G_KV
 	{ "wl_HT_80211KV", "1" },
 #else
 	{ "wl_HT_80211KV", "0" },
@@ -272,7 +273,7 @@ struct nvram_pair router_defaults[] = {
 	/* 2G Wireless parameters */
 	{ "rt_country_code", DEF_WLAN_2G_CC },
 	{ "rt_ssid", DEF_WLAN_2G_SSID },
-#if defined(BOARD_HAS_2G_11AX) && BOARD_HAS_2G_11AX
+#if WL_CAP_2G_11AX
 	{ "rt_gmode", "6" },			/* b/g/n/ax mixed */
 #else
 	{ "rt_gmode", "5" },			/* g/n mixed */
@@ -333,7 +334,7 @@ struct nvram_pair router_defaults[] = {
 	{ "rt_HT_RDG", "0" },
 	{ "rt_HT_AMSDU", "0" },
 	{ "rt_HT_MpduDensity", "5" },
-#if defined (USE_WID_2G) && (USE_WID_2G==7615 || USE_WID_2G==7915)
+#if WL_CAP_2G_MODERN
 	{ "rt_HT_BAWinSize", "256" },
 	{ "rt_ldpc", "1" },
 	{ "rt_turbo_qam", "1" },
@@ -342,7 +343,7 @@ struct nvram_pair router_defaults[] = {
 	{ "rt_ldpc", "0" },
 #endif
 	{ "rt_HT_AutoBA", "1" },
-#if defined (CONFIG_DOT11K_RRM_SUPPORT) && defined (CONFIG_WNM_SUPPORT) && defined (USE_WID_2G) && (USE_WID_2G==7615 || USE_WID_2G==7915)
+#if WL_CAP_2G_KV
 	{ "rt_HT_80211KV", "1" },
 #else
 	{ "rt_HT_80211KV", "0" },

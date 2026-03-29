@@ -28,6 +28,7 @@
 #include <ralink_priv.h>
 #include <iwlib.h>
 #include <flash_mtd.h>
+#include <wireless_caps.h>
 
 #include "rc.h"
 
@@ -574,17 +575,7 @@ strings_equal(const char *s1, const char *s2)
 static int
 is_mt7615_or_mt7915_band(int is_aband)
 {
-#if defined (USE_WID_5G) && (USE_WID_5G==7615 || USE_WID_5G==7915)
-	if (is_aband)
-		return 1;
-#endif
-
-#if defined (USE_WID_2G) && (USE_WID_2G==7615 || USE_WID_2G==7915)
-	if (!is_aband)
-		return 1;
-#endif
-
-	return 0;
+	return wl_cap_band_is_modern(is_aband);
 }
 
 static void
@@ -602,79 +593,51 @@ write_ax_feature_block(FILE *fp, int is_enabled, int pp_enable)
 static int
 has_band_steering_support(void)
 {
-#if defined (CONFIG_BAND_STEERING)
-	return 1;
-#else
-	return 0;
-#endif
+	return wl_cap_has_band_steering();
 }
 
 static int
 has_rrm_support(void)
 {
-#if defined (CONFIG_DOT11K_RRM_SUPPORT)
-	return 1;
-#else
-	return 0;
-#endif
+	return wl_cap_has_rrm();
 }
 
 static int
 has_wnm_support(void)
 {
-#if defined (CONFIG_WNM_SUPPORT)
-	return 1;
-#else
-	return 0;
-#endif
+	return wl_cap_has_wnm();
 }
 
 static int
 has_ft_support(void)
 {
-#if defined (CONFIG_DOT11R_FT_SUPPORT)
-	return 1;
-#else
-	return 0;
-#endif
+	return wl_cap_has_ft();
 }
 
 static int
 has_mbo_support(void)
 {
-#if defined (CONFIG_MBO_SUPPORT)
-	return 1;
-#else
-	return 0;
-#endif
+	return wl_cap_has_mbo();
 }
 
 static int
 has_vow_support(void)
 {
-#if defined (CONFIG_VOW_SUPPORT)
-	return 1;
-#else
-	return 0;
-#endif
+	return wl_cap_has_vow();
 }
 
 static int
 has_whnat_support(void)
 {
-#if defined (CONFIG_WHNAT_SUPPORT)
-	return 1;
-#else
-	return 0;
-#endif
+	return wl_cap_has_whnat();
 }
 
 static void
 write_modern_2g_features(FILE *fp, int i_phy_mode)
 {
-#if defined (USE_WID_2G) && (USE_WID_2G==7615 || USE_WID_2G==7915)
+#if WL_CAP_2G_MODERN
 	fprintf(fp, "G_BAND_256QAM=%d\n", nvram_wlan_get_int(0, "turbo_qam"));
-#if defined(BOARD_HAS_2G_11AX) && BOARD_HAS_2G_11AX
+#if WL_CAP_2G_11AX
 	write_ax_feature_block(fp, i_phy_mode == PHY_11AX_24G, 0);
 #endif
 #endif
@@ -683,14 +646,14 @@ write_modern_2g_features(FILE *fp, int i_phy_mode)
 static void
 write_modern_5g_features(FILE *fp, int i_phy_mode)
 {
-#if defined (USE_WID_5G) && (USE_WID_5G==7615 || USE_WID_5G==7915)
+#if WL_CAP_5G_MODERN
 	int i_mumimo;
 
 	i_mumimo = nvram_wlan_get_int(1, "mumimo");
 	fprintf(fp, "MUTxRxEnable=%d\n", (i_mumimo) ? 1 : 0);
 	fprintf(fp, "MuMimoDlEnable=%d\n", (i_mumimo) ? 1 : 0);
 	fprintf(fp, "MuMimoUlEnable=%d\n", 0);
-#if defined(BOARD_HAS_5G_11AX) && BOARD_HAS_5G_11AX
+#if WL_CAP_5G_11AX
 	write_ax_feature_block(fp, i_phy_mode == PHY_11AX_5G, 1);
 #endif
 #endif
@@ -720,31 +683,13 @@ get_cs_period(int is_aband)
 static int
 supports_vht160(int is_aband)
 {
-	if (!is_aband)
-		return 0;
-
-#if defined (USE_WID_5G) && (USE_WID_5G==7615) && !defined (BOARD_MT7615_DBDC)
-	return 1;
-#endif
-
-#if defined (USE_WID_5G) && (USE_WID_5G==7915) && !defined (BOARD_MT7915_DBDC)
-	return 1;
-#endif
-
-	return 0;
+	return wl_cap_supports_vht160(is_aband);
 }
 
 static int
 supports_vht_stbc(int is_aband)
 {
-	if (!is_aband)
-		return 0;
-
-#if defined (USE_WID_5G) && (USE_WID_5G==7615 || USE_WID_5G == 7915)
-	return 1;
-#endif
-
-	return 0;
+	return wl_cap_supports_vht_stbc(is_aband);
 }
 
 static int
@@ -802,25 +747,13 @@ get_band_steering_mode(void)
 static int
 supports_kv(int is_aband)
 {
-	if (!has_rrm_support() || !has_wnm_support())
-		return 0;
-
-	if (!is_mt7615_or_mt7915_band(is_aband))
-		return 0;
-
-	return 1;
+	return wl_cap_supports_kv(is_aband);
 }
 
 static int
 supports_ft(int is_aband)
 {
-	if (!has_ft_support())
-		return 0;
-
-	if (!is_mt7615_or_mt7915_band(is_aband))
-		return 0;
-
-	return 1;
+	return wl_cap_supports_ft(is_aband);
 }
 
 static int
@@ -1026,7 +959,7 @@ gen_ralink_config(int is_soc_ap, int is_aband, int disable_autoscan)
 	else
 		write_modern_5g_features(fp, i_phy_mode);
 
-#if defined (BOARD_MT7615_DBDC) || defined (BOARD_MT7915_DBDC)
+#if WL_CAP_IS_DBDC
 	fprintf(fp, "DBDC_MODE=%d\n", 1);
 #endif
 
@@ -1174,7 +1107,7 @@ gen_ralink_config(int is_soc_ap, int is_aband, int disable_autoscan)
 	fprintf(fp, "NoForwardingMBCast=%d;%d\n", i_val_mbss[0], i_val_mbss[1]);
 
 	//NoForwardingBTNBSSID
-#if defined(BOARD_MT7615_DBDC) || defined (BOARD_MT7915_DBDC)
+#if WL_CAP_IS_DBDC
 	fprintf(fp, "NoForwardingBTNBSSID=%d\n", 0);
 #else
 	i_val = nvram_wlan_get_int(is_aband, "guest_lan_isolate");

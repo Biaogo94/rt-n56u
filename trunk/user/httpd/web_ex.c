@@ -51,6 +51,7 @@
 #include <notify_rc.h>
 #include <rstats.h>
 #include <bin_sem_asus.h>
+#include <wireless_caps.h>
 
 #include "common.h"
 #include "nvram_x.h"
@@ -2339,79 +2340,25 @@ ej_firmware_caps_hook(int eid, webs_t wp, int argc, char **argv)
 #else
 	int has_btn_mode = 0;
 #endif
-#if defined (USE_WID_5G) && (USE_WID_5G==7610 || USE_WID_5G==7612 || USE_WID_5G==7615 || USE_WID_5G==7915)
-	int has_5g_vht = 1;
-#else
-	int has_5g_vht = 0;
-#endif
-#if defined (USE_WID_5G) && (USE_WID_5G==7615 || USE_WID_5G==7915)
-	int has_5g_mumimo = 1;
-	int has_5g_txbf = 1;
-#if defined (BOARD_MT7615_DBDC) || (BOARD_MT7915_DBDC)
-	int has_5g_160mhz = 0;
-#else
-	int has_5g_160mhz = 1;
-#endif
-#else
-	int has_5g_mumimo = 0;
-	int has_5g_txbf = 0;
-	int has_5g_160mhz = 0;
-#endif
-#if defined (USE_WID_2G) && (USE_WID_2G==7615 || USE_WID_2G==7915)
-	int has_2g_turbo_qam = 1;
-#else
-	int has_2g_turbo_qam = 0;
-#endif
-#if defined (USE_WID_2G)
-	int wid_2g = USE_WID_2G;
-#else
-	int wid_2g = 0;
-#endif
-#if defined (USE_WID_5G)
-	int wid_5g = USE_WID_5G;
-#else
-	int wid_5g = 0;
-#endif
+	int has_5g_vht = wl_cap_has_5g_vht();
+	int has_5g_mumimo = wl_cap_has_5g_mumimo();
+	int has_5g_txbf = wl_cap_has_5g_txbf();
+	int has_5g_160mhz = wl_cap_has_5g_vht160();
+	int has_2g_turbo_qam = wl_cap_has_2g_turbo_qam();
+	int wid_2g = wl_cap_get_band_wid(0);
+	int wid_5g = wl_cap_get_band_wid(1);
 #if defined (USE_SFE)
 	int has_sfe = 1;
 #else
 	int has_sfe = 0;
 #endif
-#if defined (BOARD_MT7615_DBDC) || defined (BOARD_MT7915_DBDC)
-	int has_lan_ap_isolate = 0;
-#else
-	int has_lan_ap_isolate = 1;
-#endif
-#if defined (USE_WID_5G) && (USE_WID_5G==7915)
-	int has_5g_11ax = 1;
-#else
-	int has_5g_11ax = 0;
-#endif
-#if defined (USE_WID_2G) && (USE_WID_2G==7915)
-	int has_2g_11ax = 1;
-#else
-	int has_2g_11ax = 0;
-#endif
-#if defined (CONFIG_DOT11K_RRM_SUPPORT) && defined (CONFIG_WNM_SUPPORT) && defined (USE_WID_5G) && (USE_WID_5G==7615 || USE_WID_5G==7915)
-	int has_5g_11kv = 1;
-#else
-	int has_5g_11kv = 0;
-#endif
-#if defined (CONFIG_DOT11K_RRM_SUPPORT) && defined (CONFIG_WNM_SUPPORT) && defined (USE_WID_2G) && (USE_WID_2G==7615 || USE_WID_2G==7915)
-	int has_2g_11kv = 1;
-#else
-	int has_2g_11kv = 0;
-#endif
-#if defined (CONFIG_DOT11R_FT_SUPPORT) && defined (USE_WID_5G) && (USE_WID_5G==7615 || USE_WID_5G==7915)
-	int has_5g_11r = 1;
-#else
-	int has_5g_11r = 0;
-#endif
-#if defined (CONFIG_DOT11R_FT_SUPPORT) && defined (USE_WID_2G) && (USE_WID_2G==7615 || USE_WID_2G==7915)
-	int has_2g_11r = 1;
-#else
-	int has_2g_11r = 0;
-#endif
+	int has_lan_ap_isolate = wl_cap_has_lan_ap_isolate();
+	int has_5g_11ax = wl_cap_has_5g_11ax();
+	int has_2g_11ax = wl_cap_has_2g_11ax();
+	int has_5g_11kv = wl_cap_supports_kv(1);
+	int has_2g_11kv = wl_cap_supports_kv(0);
+	int has_5g_11r = wl_cap_supports_ft(1);
+	int has_2g_11r = wl_cap_supports_ft(0);
 
 	websWrite(wp,
 		"function found_utl_hdparm() { return %d;}\n"
