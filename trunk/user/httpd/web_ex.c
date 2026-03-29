@@ -769,6 +769,98 @@ svc_pop_list(char *value, char key)
 #define WIFI_GUEST_CONTROL_BIT	(1<<3)
 #define WIFI_SCHED_CONTROL_BIT	(1<<4)
 
+struct wifi_apply_plan {
+	u64 restart_event;
+	u32 restart_timeout;
+	int *modified;
+	const char *radio_nvram;
+	const char *restart_notify;
+	const char *config_notify;
+	const char *radio_notify;
+	const char *guest_notify;
+	const char *reload_svc_nvram;
+};
+
+static struct wifi_apply_plan
+get_wifi2_apply_plan(void)
+{
+	struct wifi_apply_plan plan;
+
+	plan.restart_event = EVM_RESTART_WIFI2;
+	plan.restart_timeout = EVT_RESTART_WIFI2;
+	plan.modified = &rt_modified;
+	plan.radio_nvram = "rt_radio_x";
+	plan.restart_notify = RCN_RESTART_WIFI2;
+	plan.config_notify = "control_wifi_config_rt";
+	plan.radio_notify = "control_wifi_radio_rt";
+	plan.guest_notify = "control_wifi_guest_rt";
+	plan.reload_svc_nvram = "reload_svc_rt";
+
+	return plan;
+}
+
+#if BOARD_HAS_5G_RADIO
+static struct wifi_apply_plan
+get_wifi5_apply_plan(void)
+{
+	struct wifi_apply_plan plan;
+
+	plan.restart_event = EVM_RESTART_WIFI5;
+	plan.restart_timeout = EVT_RESTART_WIFI5;
+	plan.modified = &wl_modified;
+	plan.radio_nvram = "wl_radio_x";
+	plan.restart_notify = RCN_RESTART_WIFI5;
+	plan.config_notify = "control_wifi_config_wl";
+	plan.radio_notify = "control_wifi_radio_wl";
+	plan.guest_notify = "control_wifi_guest_wl";
+	plan.reload_svc_nvram = "reload_svc_wl";
+
+	return plan;
+}
+#endif
+
+static u32
+get_wifi_restart_time(const struct wifi_apply_plan *plan)
+{
+	if ((restart_needed_bits & plan->restart_event) == 0)
+		return 0;
+
+	if ((*plan->modified & WIFI_COMMON_CHANGE_BIT) && nvram_get_int(plan->radio_nvram))
+		return plan->restart_timeout;
+
+	return 1;
+}
+
+static void
+notify_wifi_apply(const struct wifi_apply_plan *plan)
+{
+	if ((restart_needed_bits & plan->restart_event) == 0)
+		return;
+
+	restart_needed_bits &= ~plan->restart_event;
+
+	if (!(*plan->modified))
+		return;
+
+	if ((*plan->modified & WIFI_COMMON_CHANGE_BIT) != 0) {
+		notify_rc(plan->restart_notify);
+	} else {
+		if ((*plan->modified & WIFI_IWPRIV_CHANGE_BIT) != 0)
+			notify_rc(plan->config_notify);
+
+		if ((*plan->modified & WIFI_RADIO_CONTROL_BIT) != 0)
+			notify_rc(plan->radio_notify);
+
+		if ((*plan->modified & WIFI_GUEST_CONTROL_BIT) != 0)
+			notify_rc(plan->guest_notify);
+
+		if ((*plan->modified & WIFI_SCHED_CONTROL_BIT) != 0)
+			nvram_set_int_temp(plan->reload_svc_nvram, 1);
+	}
+
+	*plan->modified = 0;
+}
+
 static void
 set_wifi_param_int(const char* ifname, char* param, char* value, int val_min, int val_max)
 {
@@ -1169,6 +1261,10 @@ update_variables_ex(int eid, webs_t wp, int argc, char **argv)
 	char *script;
 	char *serviceId;
 	int result;
+	struct wifi_apply_plan rt_plan = get_wifi2_apply_plan();
+#if BOARD_HAS_5G_RADIO
+	struct wifi_apply_plan wl_plan = get_wifi5_apply_plan();
+#endif
 
 	restart_needed_bits = 0;
 
@@ -1295,20 +1391,12 @@ update_variables_ex(int eid, webs_t wp, int argc, char **argv)
 			i++;
 		}
 		
-		if ((restart_needed_bits & EVM_RESTART_WIFI2) != 0) {
-			max_time = 1;
-			if ((rt_modified & WIFI_COMMON_CHANGE_BIT) && nvram_get_int("rt_radio_x"))
-				max_time = EVT_RESTART_WIFI2;
-			restart_total_time = MAX(restart_total_time, max_time);
-		}
+		max_time = get_wifi_restart_time(&rt_plan);
+		restart_total_time = MAX(restart_total_time, max_time);
 		
 #if BOARD_HAS_5G_RADIO
-		if ((restart_needed_bits & EVM_RESTART_WIFI5) != 0) {
-			max_time = 1;
-			if ((wl_modified & WIFI_COMMON_CHANGE_BIT) && nvram_get_int("wl_radio_x"))
-				max_time = EVT_RESTART_WIFI5;
-			restart_total_time = MAX(restart_total_time, max_time);
-		}
+		max_time = get_wifi_restart_time(&wl_plan);
+		restart_total_time = MAX(restart_total_time, max_time);
 #endif
 		if ((restart_needed_bits & EVM_RESTART_REBOOT) != 0)
 			restart_total_time = MAX(EVT_RESTART_REBOOT, restart_total_time);
@@ -1334,6 +1422,10 @@ static int
 ej_notify_services(int eid, webs_t wp, int argc, char **argv)
 {
 	int i;
+	struct wifi_apply_plan rt_plan = get_wifi2_apply_plan();
+#if BOARD_HAS_5G_RADIO
+	struct wifi_apply_plan wl_plan = get_wifi5_apply_plan();
+#endif
 
 	if (!restart_needed_bits)
 		return 0;
@@ -1358,51 +1450,10 @@ ej_notify_services(int eid, webs_t wp, int argc, char **argv)
 		i++;
 	}
 
-	if ((restart_needed_bits & EVM_RESTART_WIFI2) != 0) {
-		restart_needed_bits &= ~EVM_RESTART_WIFI2;
-		if (rt_modified) {
-			if (rt_modified & WIFI_COMMON_CHANGE_BIT)
-				notify_rc(RCN_RESTART_WIFI2);
-			else {
-				if (rt_modified & WIFI_IWPRIV_CHANGE_BIT)
-					notify_rc("control_wifi_config_rt");
-				
-				if (rt_modified & WIFI_RADIO_CONTROL_BIT)
-					notify_rc("control_wifi_radio_rt");
-				
-				if (rt_modified & WIFI_GUEST_CONTROL_BIT)
-					notify_rc("control_wifi_guest_rt");
-				
-				if (rt_modified & WIFI_SCHED_CONTROL_BIT)
-					nvram_set_int_temp("reload_svc_rt", 1);
-			}
-			rt_modified = 0;
-		}
-	}
-
-	if ((restart_needed_bits & EVM_RESTART_WIFI5) != 0) {
-		restart_needed_bits &= ~EVM_RESTART_WIFI5;
+	notify_wifi_apply(&rt_plan);
 #if BOARD_HAS_5G_RADIO
-		if (wl_modified) {
-			if (wl_modified & WIFI_COMMON_CHANGE_BIT)
-				notify_rc(RCN_RESTART_WIFI5);
-			else {
-				if (wl_modified & WIFI_IWPRIV_CHANGE_BIT)
-					notify_rc("control_wifi_config_wl");
-				
-				if (wl_modified & WIFI_RADIO_CONTROL_BIT)
-					notify_rc("control_wifi_radio_wl");
-				
-				if (wl_modified & WIFI_GUEST_CONTROL_BIT)
-					notify_rc("control_wifi_guest_wl");
-				
-				if (wl_modified & WIFI_SCHED_CONTROL_BIT)
-					nvram_set_int_temp("reload_svc_wl", 1);
-			}
-			wl_modified = 0;
-		}
+	notify_wifi_apply(&wl_plan);
 #endif
-	}
 
 	dbG("debug restart_needed_bits after: 0x%llx\n", restart_needed_bits);
 
