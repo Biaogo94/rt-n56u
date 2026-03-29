@@ -18,7 +18,6 @@
 #ifndef _netutils_h_
 #define _netutils_h_
 
-#include <net/if.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -31,8 +30,8 @@
 #define HAVE_GETIFADDRS 1
 #endif
 
-//#define IFUP				(IFF_UP | IFF_RUNNING | IFF_BROADCAST | IFF_MULTICAST)
-#define IFUP				(IFF_UP | IFF_RUNNING)
+/* Equivalent to IFF_UP | IFF_RUNNING without forcing a global if.h choice. */
+#define IFUP				0x41
 #define sin_addr(s)			(((struct sockaddr_in *)(s))->sin_addr)
 
 #define IFNAME_BR			"br0"
