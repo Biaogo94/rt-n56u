@@ -187,6 +187,8 @@ void oom_score_adjust(pid_t pid, int oom_score_adj);
 void mount_rwfs_partition(void);
 void umount_rwfs_partition(void);
 void start_rwfs_optware(void);
+int signal_service(const char *svc_name, const char *signal_name);
+int signal_service_if_running(const char *svc_name, const char *signal_name);
 void kill_services(char* svc_name[], int wtimeout, int forcekill);
 int kill_process_pidfile(char *pidfile, int wtimeout, int forcekill);
 int create_file(const char *fn);

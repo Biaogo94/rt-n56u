@@ -713,6 +713,34 @@ inline void umount_rwfs_partition(void) {}
 inline void start_rwfs_optware(void) {}
 #endif
 
+int
+signal_service(const char *svc_name, const char *signal_name)
+{
+	char *argv[4];
+
+	if (!svc_name || !*svc_name || !signal_name || !*signal_name)
+		return EINVAL;
+
+	argv[0] = "killall";
+	argv[1] = (char *)signal_name;
+	argv[2] = (char *)svc_name;
+	argv[3] = NULL;
+
+	return _eval(argv, NULL, 0, NULL);
+}
+
+int
+signal_service_if_running(const char *svc_name, const char *signal_name)
+{
+	if (!svc_name || !*svc_name)
+		return EINVAL;
+
+	if (!pids((char *)svc_name))
+		return -1;
+
+	return signal_service(svc_name, signal_name);
+}
+
 void
 kill_services(char* svc_name[], int wtimeout, int forcekill)
 {
@@ -722,7 +750,7 @@ kill_services(char* svc_name[], int wtimeout, int forcekill)
 		wtimeout = 1;
 
 	for (i=0;svc_name[i] && *svc_name[i];i++)
-		doSystem("killall %s %s", "-q", svc_name[i]);
+		signal_service(svc_name[i], "-q");
 
 	for (k=0;k<wtimeout;k++) {
 		i_waited = 0;
@@ -744,7 +772,7 @@ kill_services(char* svc_name[], int wtimeout, int forcekill)
 		for (i=0;svc_name[i] && *svc_name[i];i++) {
 			if (pids(svc_name[i])) {
 				i_killed = 1;
-				doSystem("killall %s %s", "-SIGKILL", svc_name[i]);
+				signal_service(svc_name[i], "-SIGKILL");
 			}
 		}
 		if (i_killed)

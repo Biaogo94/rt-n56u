@@ -92,7 +92,7 @@ void insert_user_in_smbpasswd(char *user, char *line)
 		}
 	}
 
-	fprintf(fp, line);
+	fputs(line, fp);
 
 out:
 	if(fp)

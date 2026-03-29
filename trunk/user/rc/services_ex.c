@@ -530,10 +530,7 @@ restart_dhcpd(void)
 int
 restart_dns(void)
 {
-	if (!is_dns_dhcpd_run())
-		return -1;
-
-	return doSystem("killall %s %s", "-SIGHUP", "dnsmasq");
+	return signal_service_if_running("dnsmasq", "-SIGHUP");
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -642,8 +639,7 @@ start_wins(void)
 void
 reload_nmbd(void)
 {
-	if (pids("nmbd"))
-		doSystem("killall %s %s", "-SIGHUP", "nmbd");
+	signal_service_if_running("nmbd", "-SIGHUP");
 }
 
 void
@@ -654,7 +650,7 @@ restart_nmbd(void)
 	if (pids("smbd")) {
 		write_smb_conf();
 		eval("/sbin/nmbd", "-D", "-s", "/etc/smb.conf");
-		doSystem("killall %s %s", "-SIGHUP", "smbd");
+		signal_service("smbd", "-SIGHUP");
 	} else
 #endif
 	start_wins();
@@ -827,7 +823,7 @@ update_upnp(void)
 
 	/* update upnp forwards from lease file */
 	if (check_if_file_exist(UPNPD_LEASE_FILE)) {
-		doSystem("killall %s %s", "-SIGUSR1", "miniupnpd");
+		signal_service("miniupnpd", "-SIGUSR1");
 	}
 }
 
@@ -1124,7 +1120,7 @@ notify_ddns_update(void)
 {
 	if (pids("inadyn")) {
 		write_inadyn_conf(DDNS_CONF_FILE);
-		return doSystem("killall %s %s", "-SIGHUP", "inadyn");
+		return signal_service("inadyn", "-SIGHUP");
 	}
 
 	return start_ddns(0);
