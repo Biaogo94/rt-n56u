@@ -30,6 +30,7 @@
 #include <rtutils.h>
 #include <netutils.h>
 #include <shutils.h>
+#include <service_table.h>
 #include <notify_rc.h>
 #include <bin_sem_asus.h>
 

@@ -45,9 +45,7 @@ static const struct service_desc service_table[] = {
     { "klogd", "/sbin/klogd", "klogd", NULL, 0, SVC_FLAG_NONE, NULL, NULL, NULL, NULL, NULL },
 #endif
 
-#if defined(APP_DNSMASQ)
-    { "dnsmasq", "/usr/sbin/dnsmasq", "dnsmasq", NULL, 0, SVC_FLAG_NONE, NULL, NULL, NULL, NULL, NULL },
-#endif
+    { "dnsmasq", "/usr/sbin/dnsmasq", "dnsmasq", NULL, 0, SVC_FLAG_NONE, NULL, NULL, NULL, NULL, NULL, "-SIGHUP", NULL },
 
 #if defined(APP_DROPBEAR) || defined(USE_SSH)
     { "sshd", "/usr/bin/sshd.sh", "dropbear", "sshd_enable", 0, SVC_FLAG_SINGLETON | SVC_FLAG_RESTART_FW, NULL, NULL, NULL, NULL, NULL },
@@ -69,8 +67,22 @@ static const struct service_desc service_table[] = {
     { "ntpclient", "/usr/sbin/ntpclient.sh", "ntpclient", "ntp_client_enable", 0, SVC_FLAG_LATE_START, NULL, NULL, NULL, NULL, NULL },
 #endif
 
-#if defined(APP_DDNS)
-    { "inadyn", "/usr/sbin/inadyn.sh", "inadyn", "ddns_enable_x", 0, SVC_FLAG_LATE_START, NULL, NULL, NULL, NULL, NULL },
+    { "inadyn", NULL, "inadyn", "ddns_enable_x", 0, SVC_FLAG_LATE_START, NULL, NULL, NULL, NULL, NULL, "-SIGHUP", NULL },
+
+#if defined(APP_NMBD) || defined(APP_SMBD)
+    { "nmbd", NULL, "nmbd", NULL, 0, SVC_FLAG_NONE, NULL, NULL, NULL, NULL, NULL, "-SIGHUP", NULL },
+#endif
+
+#if defined(APP_SMBD)
+    { "smbd", NULL, "smbd", NULL, 0, SVC_FLAG_NONE, NULL, NULL, NULL, NULL, NULL, "-SIGHUP", NULL },
+#endif
+
+#if defined(APP_SMBD36)
+    { "wsdd2", NULL, "wsdd2", NULL, 0, SVC_FLAG_NONE, NULL, NULL, NULL, NULL, NULL, "-SIGHUP", NULL },
+#endif
+
+#if defined(APP_XUPNPD)
+    { "miniupnpd", NULL, "miniupnpd", NULL, 0, SVC_FLAG_NONE, NULL, NULL, NULL, NULL, NULL, "-SIGUSR1", NULL },
 #endif
 
 #if defined(APP_ARIA2)
@@ -97,6 +109,37 @@ static const struct service_desc service_table[] = {
 /* Runtime state */
 static struct service_entry *service_entries = NULL;
 static int service_count_cache = 0;
+
+static int
+service_is_script_wrapper(const struct service_desc *svc)
+{
+    size_t len;
+
+    if (!svc || !svc->script)
+        return 0;
+
+    len = strlen(svc->script);
+    if (len < 3)
+        return 0;
+
+    return strcmp(svc->script + len - 3, ".sh") == 0;
+}
+
+static int
+service_send_signal(const char *svc_name, const char *signal_name)
+{
+    char *argv[4];
+
+    if (!svc_name || !*svc_name || !signal_name || !*signal_name)
+        return -1;
+
+    argv[0] = "killall";
+    argv[1] = (char *)signal_name;
+    argv[2] = (char *)svc_name;
+    argv[3] = NULL;
+
+    return _eval(argv, NULL, 0, NULL);
+}
 
 void
 service_shutdown(void)
@@ -215,7 +258,10 @@ service_start(const struct service_desc *svc)
     if (svc->start_func) {
         ret = svc->start_func();
     } else if (svc->script) {
-        ret = eval((char *)svc->script, "start");
+        if (service_is_script_wrapper(svc))
+            ret = eval((char *)svc->script, "start");
+        else
+            ret = eval((char *)svc->script);
     }
 
     return ret;
@@ -232,12 +278,11 @@ service_stop(const struct service_desc *svc)
     /* Stop service */
     if (svc->stop_func) {
         ret = svc->stop_func();
-    } else if (svc->script) {
+    } else if (svc->script && service_is_script_wrapper(svc)) {
         ret = eval((char *)svc->script, "stop");
     } else if (svc->pid_name) {
         /* Kill by process name */
-        doSystem("killall -q %s", svc->pid_name);
-        ret = 0;
+        ret = service_send_signal(svc->pid_name, "-q");
     }
 
     /* Call post-stop hook */
@@ -262,6 +307,24 @@ service_restart(const struct service_desc *svc)
     sleep(1);
 
     return service_start(svc);
+}
+
+int
+service_reload(const struct service_desc *svc)
+{
+    if (!svc)
+        return -1;
+
+    if (svc->reload_func)
+        return svc->reload_func();
+
+    if (svc->reload_signal && svc->pid_name && service_is_running(svc))
+        return service_send_signal(svc->pid_name, svc->reload_signal);
+
+    if (!service_is_running(svc))
+        return -1;
+
+    return service_restart(svc);
 }
 
 int
@@ -380,4 +443,15 @@ service_toggle(const char *name, int enable)
     } else {
         return service_stop(svc);
     }
+}
+
+int
+service_reload_by_name(const char *name)
+{
+    const struct service_desc *svc = service_find(name);
+
+    if (!svc)
+        return -1;
+
+    return service_reload(svc);
 }

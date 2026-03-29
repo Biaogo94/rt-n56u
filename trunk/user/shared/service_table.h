@@ -38,6 +38,8 @@ struct service_desc {
     int (*stop_func)(void);              /* Custom stop function */
     int (*pre_start)(void);              /* Called before start */
     int (*post_stop)(void);              /* Called after stop */
+    const char *reload_signal;           /* Signal used for in-place reload */
+    int (*reload_func)(void);            /* Custom reload function */
 };
 
 /*
@@ -88,6 +90,11 @@ int service_stop(const struct service_desc *svc);
  * Restart a service
  */
 int service_restart(const struct service_desc *svc);
+
+/*
+ * Reload a service in place when supported.
+ */
+int service_reload(const struct service_desc *svc);
 
 /*
  * Start all enabled services
@@ -152,5 +159,8 @@ int service_stop_and_disable(const char *name);
 
 /* Toggle service based on NVRAM */
 int service_toggle(const char *name, int enable);
+
+/* Reload service by registry name */
+int service_reload_by_name(const char *name);
 
 #endif /* _SERVICE_TABLE_H_ */

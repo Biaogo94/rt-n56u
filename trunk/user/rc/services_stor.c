@@ -559,18 +559,18 @@ void run_samba(void)
 	config_smb_fastpath(0);
 
 	if (has_nmbd)
-		signal_service("nmbd", "-SIGHUP");
+		service_reload_by_name("nmbd");
 	else
 		eval("/sbin/nmbd", "-D", "-s", "/etc/smb.conf");
 
 	if (has_smbd)
-		signal_service("smbd", "-SIGHUP");
+		service_reload_by_name("smbd");
 	else
 		eval("/sbin/smbd", "-D", "-s", "/etc/smb.conf");
 
 #if defined (APP_SMBD36)
 	if (pids("wsdd2"))
-		signal_service("wsdd2", "-SIGHUP");
+		service_reload_by_name("wsdd2");
 	else
 		eval("/sbin/wsdd2", "-d", "-w");
 	
