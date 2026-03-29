@@ -101,7 +101,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Verify generated files
         run: |
@@ -120,7 +120,7 @@ jobs:
 
       - name: Restore toolchain cache
         id: cache-toolchain
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: toolchain-mipsel/toolchain-3.4.x
           key: ${{ runner.os }}-padavan-toolchain-3.4.x-${{ hashFiles('toolchain-mipsel/dl_toolchain.sh') }}
@@ -241,7 +241,7 @@ jobs:
 
       - name: Upload firmware artifact
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.build.outputs.artifact_name || 'firmware' }}
           path: |

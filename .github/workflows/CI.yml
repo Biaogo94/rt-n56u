@@ -35,7 +35,7 @@ jobs:
           - build_variant: "mt7621-usb"
             targets: "XY-C1 JCG-836PRO JCG-AC860M JCG-Y2 DIR-882 A3004NS MSG1500 WR1200JS MI-R3G NEWIFI3 B70"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v6
       - name: Prepare environment
         run: |
           sudo apt update
@@ -89,7 +89,7 @@ jobs:
           echo "image_name=${image_name}" >> $GITHUB_ENV
       - name: Upload images to Artifact
         if: ${{ github.event_name != 'release' && success() }}
-        uses: actions/upload-artifact@v2.2.1
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ env.image_name }}
           path: ${{ env.images_dir }}/*.7z
