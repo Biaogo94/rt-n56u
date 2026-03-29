@@ -288,12 +288,12 @@ sys_script(char *name)
 	{
 		notify_rc("restart_dms_rescan");
 	}
-	else if (strstr(scmd, " ") == 0) // no parameter, run script with eval
+	else if (strpbrk(name, " \t\r\n/") == NULL)
 	{
 		eval(scmd);
 	}
 	else
-		system(scmd);
+		logmessage("httpd", "Rejected unsafe action_script: %s", name);
 }
 
 static int
