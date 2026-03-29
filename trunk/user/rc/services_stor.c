@@ -48,7 +48,7 @@ spindown_hdd(char *sd_dev)
 	if (strncmp(sd_dev, "sd", 2) != 0)
 		return;
 
-	doSystem("/sbin/spindown.sh %s", sd_dev);
+	eval("/sbin/spindown.sh", sd_dev);
 }
 
 static int
@@ -471,16 +471,20 @@ clean_smbd_trash(void)
 		"sessionid.tdb",
 		NULL
 	};
+	char lock_path[64];
 
 	for (i=0; locks[i] && *locks[i]; i++)
-		doSystem("rm -f /var/locks/%s", locks[i]);
+	{
+		snprintf(lock_path, sizeof(lock_path), "/var/locks/%s", locks[i]);
+		unlink(lock_path);
+	}
 
 #if defined (APP_SMBD36)
-	doSystem("rm -f %s", "/var/log.*");
+	remove_glob_paths("/var/log.*");
 #else
-	doSystem("rm -f %s", "/var/*.log");
+	remove_glob_paths("/var/*.log");
 #endif
-	doSystem("rm -f %s", "/var/log/*");
+	remove_glob_paths("/var/log/*");
 }
 
 void
@@ -540,7 +544,7 @@ void run_samba(void)
 	has_nmbd = pids("nmbd");
 
 	if (!has_nmbd && !has_smbd) {
-		doSystem("rm -f %s", "/etc/samba/*");
+		remove_glob_paths("/etc/samba/*");
 		clean_smbd_trash();
 	}
 

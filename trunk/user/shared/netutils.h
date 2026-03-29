@@ -18,6 +18,7 @@
 #ifndef _netutils_h_
 #define _netutils_h_
 
+#include <net/if.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>

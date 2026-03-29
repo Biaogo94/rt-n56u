@@ -140,6 +140,7 @@ extern int copy_file_to_path(const char *src_path, const char *dst_path);
 extern int move_path_replace(const char *src_path, const char *dst_path);
 extern int copy_path_recursive(const char *src_path, const char *dst_path);
 extern int remove_path_recursive(const char *path);
+extern int remove_glob_paths(const char *pattern);
 
 extern void logmessage(char *logheader, char *fmt, ...);
 

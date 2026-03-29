@@ -40,6 +40,7 @@
 #include <grp.h>
 #include <syslog.h>
 #include <utime.h>
+#include <glob.h>
 
 #include "nvram_linux.h"
 #include "shutils.h"
@@ -866,6 +867,36 @@ remove_path_recursive(const char *path)
 		return errno;
 
 	return 0;
+}
+
+int
+remove_glob_paths(const char *pattern)
+{
+	glob_t matches;
+	int ret;
+	int first_err;
+	size_t i;
+
+	if (!pattern || !*pattern)
+		return EINVAL;
+
+	memset(&matches, 0, sizeof(matches));
+	ret = glob(pattern, 0, NULL, &matches);
+	if (ret == GLOB_NOMATCH)
+		return 0;
+	if (ret != 0)
+		return EINVAL;
+
+	first_err = 0;
+	for (i = 0; i < matches.gl_pathc; i++) {
+		ret = remove_path_recursive(matches.gl_pathv[i]);
+		if (ret != 0 && first_err == 0)
+			first_err = ret;
+	}
+
+	globfree(&matches);
+
+	return first_err;
 }
 
 void
