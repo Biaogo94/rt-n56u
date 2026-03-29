@@ -58,10 +58,16 @@ normalize_wlan_runtime_caps(int is_aband)
 {
 	int stream_max_tx, stream_max_rx;
 	int stream_tx, stream_rx;
+	int gmode;
 	int max_ht_bw;
 
-	if (strlen(nvram_wlan_get(is_aband, "gmode")) < 1)
+	if (strlen(nvram_wlan_get(is_aband, "gmode")) < 1) {
 		nvram_wlan_set_int(is_aband, "gmode", wl_cap_default_gmode(is_aband));
+	} else {
+		gmode = nvram_wlan_get_int(is_aband, "gmode");
+		if (gmode > wl_cap_max_gmode(is_aband))
+			nvram_wlan_set_int(is_aband, "gmode", wl_cap_default_gmode(is_aband));
+	}
 
 	max_ht_bw = wl_cap_max_ht_bw(is_aband);
 	if (nvram_wlan_get_int(is_aband, "HT_BW") > max_ht_bw)

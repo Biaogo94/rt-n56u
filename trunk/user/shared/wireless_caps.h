@@ -148,6 +148,9 @@
 #define WL_CAP_DEFAULT_2G_GMODE 5
 #endif
 
+#define WL_CAP_MAX_5G_GMODE WL_CAP_DEFAULT_5G_GMODE
+#define WL_CAP_MAX_2G_GMODE WL_CAP_DEFAULT_2G_GMODE
+
 #if WL_CAP_5G_VHT
 #define WL_CAP_DEFAULT_5G_HT_BW 2
 #else
@@ -296,6 +299,12 @@ static int
 wl_cap_default_gmode(int is_aband)
 {
 	return (is_aband) ? WL_CAP_DEFAULT_5G_GMODE : WL_CAP_DEFAULT_2G_GMODE;
+}
+
+static int
+wl_cap_max_gmode(int is_aband)
+{
+	return (is_aband) ? WL_CAP_MAX_5G_GMODE : WL_CAP_MAX_2G_GMODE;
 }
 
 static int
