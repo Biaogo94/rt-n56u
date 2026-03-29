@@ -692,7 +692,7 @@ on_server_client_connect(int is_tun)
 	}
 
 	if (check_if_file_exist(script_name))
-		doSystem("%s %s %s %s %s %s", script_name, "up", dev_ifname, peer_addr_l, peer_addr_r, common_name);
+		eval((char *)script_name, "up", dev_ifname, peer_addr_l, peer_addr_r, common_name);
 }
 
 static void
@@ -741,7 +741,7 @@ on_server_client_disconnect(int is_tun)
 	}
 
 	if (check_if_file_exist(script_name))
-		doSystem("%s %s %s %s %s %s", script_name, "down", dev_ifname, peer_addr_l, peer_addr_r, common_name);
+		eval((char *)script_name, "down", dev_ifname, peer_addr_l, peer_addr_r, common_name);
 }
 
 static void
@@ -760,7 +760,7 @@ call_client_script(const char *script_name, const char *arg)
 		setenv(env_pppd[i], safe_getenv(env), 1);
 	}
 
-	doSystem("%s %s", script_name, arg);
+	eval((char *)script_name, arg);
 
 	for (i = 0; i < ARRAY_SIZE(env_ovpn); i++)
 		unsetenv(env_pppd[i]);
@@ -1048,7 +1048,11 @@ ovpn_server_expcli_main(int argc, char **argv)
 	/* Generate client cert and key */
 	remove_path_recursive(tmp_ovpn_path);
 	setenv("CRT_PATH_CLI", tmp_ovpn_path, 1);
-	doSystem("/usr/bin/openvpn-cert.sh %s -n '%s' -b %s -d %d", "client", argv[1], rsa_bits, days_valid);
+	{
+		char days_valid_str[16];
+		snprintf(days_valid_str, sizeof(days_valid_str), "%d", days_valid);
+		eval("/usr/bin/openvpn-cert.sh", "client", "-n", argv[1], "-b", rsa_bits, "-d", days_valid_str);
+	}
 	unsetenv("CRT_PATH_CLI");
 
 	i_prot = nvram_get_int("vpns_ov_prot");
@@ -1124,7 +1128,12 @@ ovpn_server_expcli_main(int argc, char **argv)
 	}
 
 	if (i_tcv2) {
-		doSystem("/usr/sbin/openvpn --genkey tls-crypt-v2-client %s/%s --tls-crypt-v2 %s/stc2.key", tmp_ovpn_path, openvpn_client_keys[3], SERVER_CERT_DIR);
+		char tls_crypt_v2_out[96];
+		char tls_crypt_v2_key[96];
+
+		snprintf(tls_crypt_v2_out, sizeof(tls_crypt_v2_out), "%s/%s", tmp_ovpn_path, openvpn_client_keys[3]);
+		snprintf(tls_crypt_v2_key, sizeof(tls_crypt_v2_key), "%s/%s", SERVER_CERT_DIR, "stc2.key");
+		eval("/usr/sbin/openvpn", "--genkey", "tls-crypt-v2-client", tls_crypt_v2_out, "--tls-crypt-v2", tls_crypt_v2_key);
 		openvpn_add_key(fp, tmp_ovpn_path, openvpn_client_keys[3], "tls-crypt-v2");
 	}
 
@@ -1132,7 +1141,7 @@ ovpn_server_expcli_main(int argc, char **argv)
 
 	remove_path_recursive(tmp_ovpn_path);
 
-	doSystem("unix2dos %s", tmp_ovpn_conf);
+	eval("unix2dos", tmp_ovpn_conf);
 	chmod(tmp_ovpn_conf, 0600);
 
 	return 0;

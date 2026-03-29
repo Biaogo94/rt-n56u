@@ -3297,10 +3297,12 @@ apply_cgi(const char *url, webs_t wp)
 		char *common_name = websGetVar(wp, "common_name", "");
 		char *rsa_bits = websGetVar(wp, "rsa_bits", "1024");
 		int days_valid = atoi(websGetVar(wp, "days_valid", "365"));
+		char days_valid_str[16];
 		if (strlen(common_name) < 1)
 			common_name = "client@ovpn";
+		snprintf(days_valid_str, sizeof(days_valid_str), "%d", days_valid);
 		if (get_login_safe())
-			sys_result = doSystem("/sbin/ovpn_export_client '%s' %s %d", common_name, rsa_bits, days_valid);
+			sys_result = eval("/sbin/ovpn_export_client", common_name, rsa_bits, days_valid_str);
 #endif
 		websWrite(wp, "{\"sys_result\": %d}", sys_result);
 		return 0;
@@ -3312,10 +3314,12 @@ apply_cgi(const char *url, webs_t wp)
 		char *common_name = websGetVar(wp, "common_name", "");
 		char *rsa_bits = websGetVar(wp, "rsa_bits", "1024");
 		int days_valid = atoi(websGetVar(wp, "days_valid", "365"));
+		char days_valid_str[16];
 		if (strlen(common_name) < 1)
 			common_name = "OpenVPN Server";
+		snprintf(days_valid_str, sizeof(days_valid_str), "%d", days_valid);
 		if (get_login_safe())
-			sys_result = doSystem("/usr/bin/openvpn-cert.sh %s -n '%s' -b %s -d %d", "server", common_name, rsa_bits, days_valid);
+			sys_result = eval("/usr/bin/openvpn-cert.sh", "server", "-n", common_name, "-b", rsa_bits, "-d", days_valid_str);
 #endif
 		websWrite(wp, "{\"sys_result\": %d}", sys_result);
 		return 0;
@@ -3327,10 +3331,12 @@ apply_cgi(const char *url, webs_t wp)
 		char *common_name = websGetVar(wp, "common_name", "");
 		char *rsa_bits = websGetVar(wp, "rsa_bits", "1024");
 		int days_valid = atoi(websGetVar(wp, "days_valid", "365"));
+		char days_valid_str[16];
 		if (strlen(common_name) < 1)
 			common_name = nvram_safe_get("lan_ipaddr_t");
+		snprintf(days_valid_str, sizeof(days_valid_str), "%d", days_valid);
 		if (get_login_safe())
-			sys_result = doSystem("/usr/bin/https-cert.sh -n '%s' -b %s -d %d", common_name, rsa_bits, days_valid);
+			sys_result = eval("/usr/bin/https-cert.sh", "-n", common_name, "-b", rsa_bits, "-d", days_valid_str);
 #endif
 		websWrite(wp, "{\"sys_result\": %d}", sys_result);
 		return 0;

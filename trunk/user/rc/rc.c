@@ -598,7 +598,7 @@ flash_firmware(void)
 	stop_services(0); // don't stop httpd/telnetd/sshd/vpn
 
 	if (check_if_file_exist(script_name))
-		doSystem("%s %d", script_name, 0);
+		eval((char *)script_name, "0");
 
 #if defined (USE_STORAGE)
 	safe_remove_all_stor_devices(0);
@@ -971,7 +971,12 @@ shutdown_router(int level)
 		stop_services(use_halt);
 
 	if (check_if_file_exist(script_name))
-		doSystem("%s %d", script_name, level);
+	{
+		char level_str[16];
+
+		snprintf(level_str, sizeof(level_str), "%d", level);
+		eval((char *)script_name, level_str);
+	}
 
 #if defined (USE_STORAGE)
 	safe_remove_all_stor_devices(use_halt);

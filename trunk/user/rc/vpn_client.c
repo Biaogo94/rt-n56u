@@ -342,7 +342,7 @@ ipup_vpnc_main(int argc, char **argv)
 		update_resolvconf(0, 0);
 
 	if (check_if_file_exist(script_name))
-		doSystem("%s %s", script_name, "up");
+		eval((char *)script_name, "up");
 
 	return 0;
 }
@@ -364,7 +364,7 @@ ipdown_vpnc_main(int argc, char **argv)
 	restore_dns_from_vpnc();
 
 	if (check_if_file_exist(script_name))
-		doSystem("%s %s", script_name, "down");
+		eval((char *)script_name, "down");
 
 	return 0;
 }

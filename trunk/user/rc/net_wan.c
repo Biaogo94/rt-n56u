@@ -1376,7 +1376,7 @@ wan_up(char *wan_ifname, int unit, int is_static)
 
 	/* call custom user script */
 	if (check_if_file_exist(script_postw))
-		doSystem("%s %s %s %s", script_postw, "up", wan_ifname, wan_addr);
+		eval((char *)script_postw, "up", wan_ifname, wan_addr);
 }
 
 void
@@ -1447,7 +1447,7 @@ wan_down(char *wan_ifname, int unit, int is_static)
 	set_wan_unit_value_int(unit, "bytes_tx", 0);
 
 	if (check_if_file_exist(script_postw))
-		doSystem("%s %s %s %s", script_postw, "down", wan_ifname, wan_addr);
+		eval((char *)script_postw, "down", wan_ifname, wan_addr);
 }
 
 void
@@ -1660,7 +1660,14 @@ notify_on_internet_state_changed(int has_internet, long elapsed)
 	}
 
 	if (check_if_file_exist(script_inet))
-		doSystem("%s %d %ld", script_inet, has_internet, elapsed);
+	{
+		char has_internet_str[16];
+		char elapsed_str[32];
+
+		snprintf(has_internet_str, sizeof(has_internet_str), "%d", has_internet);
+		snprintf(elapsed_str, sizeof(elapsed_str), "%ld", elapsed);
+		eval((char *)script_inet, has_internet_str, elapsed_str);
+	}
 }
 
 int

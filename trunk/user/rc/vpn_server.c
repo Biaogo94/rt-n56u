@@ -443,7 +443,7 @@ ipup_vpns_main(int argc, char **argv)
 	}
 
 	if (check_if_file_exist(script_name))
-		doSystem("%s %s %s %s %s %s", script_name, "up", argv[1], argv[5], argv[6], peer_name);
+		eval((char *)script_name, "up", argv[1], argv[5], argv[6], peer_name);
 
 	return 0;
 }
@@ -494,7 +494,7 @@ ipdown_vpns_main(int argc, char **argv)
 	}
 
 	if (check_if_file_exist(script_name))
-		doSystem("%s %s %s %s %s %s", script_name, "down", argv[1], argv[5], argv[6], peer_name);
+		eval((char *)script_name, "down", argv[1], argv[5], argv[6], peer_name);
 
 	if ((i_clients == 0 || nvram_get_int("vpns_cast") == 0) && pids(svcs[0]))
 		kill_services(svcs, 3, 1);
