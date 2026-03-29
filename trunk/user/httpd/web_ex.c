@@ -97,7 +97,7 @@ void
 sys_reboot(void)
 {
 #ifdef MTD_FLASH_32M_REBOOT_BUG
-	doSystem("/sbin/mtd_storage.sh %s", "save");
+	eval("/sbin/mtd_storage.sh", "save");
 	eval("/bin/mtd_write", "-r", "unlock", "mtd1");
 #else
 	kill(1, SIGTERM);
@@ -2181,7 +2181,7 @@ wol_action_hook(int eid, webs_t wp, int argc, char **argv)
 	sys_result = -1;
 	
 	if (wol_mac[0])
-		sys_result = doSystem("/usr/sbin/ether-wake -b -i %s %s", IFNAME_BR, wol_mac);
+		sys_result = eval("/usr/sbin/ether-wake", "-b", "-i", IFNAME_BR, wol_mac);
 	
 	if (sys_result == 0) 
 	{
@@ -3274,7 +3274,7 @@ apply_cgi(const char *url, webs_t wp)
 	}
 	else if (!strcmp(value, " RestoreStorage "))
 	{
-		doSystem("/sbin/mtd_storage.sh %s", "reset");
+		eval("/sbin/mtd_storage.sh", "reset");
 		return 0;
 	}
 	else if (!strcmp(value, " CommitFlash "))
@@ -3286,7 +3286,7 @@ apply_cgi(const char *url, webs_t wp)
 		if (commit_all || strcmp(action_id, "commit_nvram") == 0)
 			sys_result |= nvram_commit();
 		if (commit_all || strcmp(action_id, "commit_storage") == 0)
-			sys_result |= doSystem("/sbin/mtd_storage.sh %s", "save");
+			sys_result |= eval("/sbin/mtd_storage.sh", "save");
 		websWrite(wp, "{\"sys_result\": %d}", sys_result);
 		return 0;
 	}

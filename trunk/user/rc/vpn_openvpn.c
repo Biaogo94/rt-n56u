@@ -629,7 +629,7 @@ static void
 openvpn_tapif_start(const char *ifname, int is_server, int insert_to_bridge)
 {
 	if (!is_interface_exist(ifname))
-		doSystem("%s %s --dev %s", OPENVPN_EXE, "--mktun", ifname);
+		eval(OPENVPN_EXE, "--mktun", "--dev", ifname);
 
 	if (insert_to_bridge)
 		br_add_del_if(IFNAME_BR, ifname, 1);
@@ -643,7 +643,7 @@ openvpn_tapif_stop(const char *ifname)
 	if (is_interface_exist(ifname)) {
 		ifconfig(ifname, 0, NULL, NULL);
 		br_add_del_if(IFNAME_BR, ifname, 0);
-		doSystem("%s %s --dev %s", OPENVPN_EXE, "--rmtun", ifname);
+		eval(OPENVPN_EXE, "--rmtun", "--dev", ifname);
 	}
 }
 
@@ -651,7 +651,7 @@ static void
 openvpn_tunif_start(const char *ifname, int is_server)
 {
 	if (!is_interface_exist(ifname))
-		doSystem("%s %s --dev %s", OPENVPN_EXE, "--mktun", ifname);
+		eval(OPENVPN_EXE, "--mktun", "--dev", ifname);
 	set_vpn_balancing(ifname, is_server);
 }
 
@@ -660,7 +660,7 @@ openvpn_tunif_stop(const char *ifname)
 {
 	if (is_interface_exist(ifname)) {
 		ifconfig(ifname, 0, NULL, NULL);
-		doSystem("%s %s --dev %s", OPENVPN_EXE, "--rmtun", ifname);
+		eval(OPENVPN_EXE, "--rmtun", "--dev", ifname);
 	}
 }
 

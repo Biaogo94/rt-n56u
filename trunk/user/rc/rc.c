@@ -567,13 +567,13 @@ nvram_convert_misc_values(void)
 void
 write_storage_to_mtd(void)
 {
-	doSystem("/sbin/mtd_storage.sh %s", "save");
+	eval("/sbin/mtd_storage.sh", "save");
 }
 
 void
 erase_storage(void)
 {
-	doSystem("/sbin/mtd_storage.sh %s", "erase");
+	eval("/sbin/mtd_storage.sh", "erase");
 }
 
 void

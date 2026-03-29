@@ -155,7 +155,7 @@ int mdev_sg_main(int argc, char **argv)
 		char usb_port_id[64] = {0};
 		if (get_usb_port_by_device(device_name, usb_port_id, sizeof(usb_port_id))) {
 			if (get_usb_vid(usb_port_id, vid, sizeof(vid)) && get_usb_pid(usb_port_id, pid, sizeof(pid)))
-				doSystem("/sbin/zerocd %s %s", vid, pid);
+				eval("/sbin/zerocd", vid, pid);
 		}
 	}
 
@@ -197,7 +197,11 @@ int mdev_sr_main(int argc, char **argv)
 		return 1;
 	}
 
-	doSystem("eject -s /dev/%s", device_name);
+	{
+		char device_path[64];
+		snprintf(device_path, sizeof(device_path), "/dev/%s", device_name);
+		eval("eject", "-s", device_path);
+	}
 	sleep(1);
 	module_smart_unload("sr_mod", 1);
 

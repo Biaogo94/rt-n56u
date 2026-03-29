@@ -725,7 +725,7 @@ ej_safely_remove_disk(int eid, webs_t wp, int argc, char **argv)
 
 #if defined (USE_ATA_SUPPORT)
 	if (port_num == ATA_VIRT_PORT_ID)
-		result = doSystem("/sbin/ejata %s", disk_devn);
+		result = eval("/sbin/ejata", disk_devn);
 	else
 #endif
 #if defined (USE_MMC_SUPPORT)
@@ -733,7 +733,11 @@ ej_safely_remove_disk(int eid, webs_t wp, int argc, char **argv)
 		result = eval("/sbin/ejmmc");
 	else
 #endif
-		result = doSystem("/sbin/ejusb %d %s", port_num, disk_devn);
+	{
+		char port_num_str[16];
+		snprintf(port_num_str, sizeof(port_num_str), "%d", port_num);
+		result = eval("/sbin/ejusb", port_num_str, disk_devn);
+	}
 
 	if (result != 0) {
 		websWrite(wp, "<script>safely_remove_disk_error(\'%s\');</script>\n", get_alert_msg_from_dict("Action9"));
