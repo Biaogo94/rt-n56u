@@ -1,0 +1,511 @@
+{
+  "schema_version": 1,
+  "variants": [
+    "mt7620",
+    "mt7628",
+    "mt7621",
+    "mt7621-usb"
+  ],
+  "groups": {
+    "mt7620": [
+      "PSG1208",
+      "PSG1218",
+      "NEWIFI-MINI",
+      "MI-MINI"
+    ],
+    "mt7628": [
+      "HC5861B",
+      "MI-NANO",
+      "MZ-R13",
+      "MZ-R13P",
+      "360P2"
+    ],
+    "mt7621": [
+      "K2P_nano",
+      "K2P",
+      "DIR-878",
+      "RM2100",
+      "CR660x"
+    ],
+    "mt7621-usb": [
+      "XY-C1",
+      "JCG-836PRO",
+      "JCG-AC860M",
+      "MI-R3G",
+      "NEWIFI3",
+      "B70"
+    ]
+  },
+  "targets": [
+    {
+      "target": "360P2",
+      "board_id": "360P2",
+      "soc": "mt7628",
+      "radios": "7628+7612",
+      "usb": true,
+      "kernel_config": "kernel-3.4.x.config",
+      "ci_group": "mt7628",
+      "release_tier": "compatibility"
+    },
+    {
+      "target": "5K-W20",
+      "board_id": "5K-W20",
+      "soc": "mt7620",
+      "radios": "7620",
+      "usb": true,
+      "kernel_config": "kernel-3.4.x.config",
+      "ci_group": "",
+      "release_tier": "compatibility"
+    },
+    {
+      "target": "A3004NS",
+      "board_id": "A3004NS",
+      "soc": "mt7621",
+      "radios": "7602+7612",
+      "usb": true,
+      "kernel_config": "kernel-3.4.x.config",
+      "ci_group": "",
+      "release_tier": "compatibility"
+    },
+    {
+      "target": "B70",
+      "board_id": "B70",
+      "soc": "mt7621",
+      "radios": "7603+7612",
+      "usb": true,
+      "kernel_config": "kernel-3.4.x.config",
+      "ci_group": "mt7621-usb",
+      "release_tier": "compatibility"
+    },
+    {
+      "target": "CR660x",
+      "board_id": "CR660x",
+      "soc": "mt7621",
+      "radios": "7915",
+      "usb": false,
+      "kernel_config": "kernel-3.4.x.config",
+      "ci_group": "mt7621",
+      "release_tier": "primary"
+    },
+    {
+      "target": "DIR-878",
+      "board_id": "DIR-878",
+      "soc": "mt7621",
+      "radios": "7615+7615",
+      "usb": false,
+      "kernel_config": "kernel-3.4.x-5.0.config",
+      "ci_group": "mt7621",
+      "release_tier": "primary"
+    },
+    {
+      "target": "DIR-882",
+      "board_id": "DIR-882",
+      "soc": "mt7621",
+      "radios": "7615+7615",
+      "usb": true,
+      "kernel_config": "kernel-3.4.x-5.0.config",
+      "ci_group": "",
+      "release_tier": "secondary"
+    },
+    {
+      "target": "E8820V2",
+      "board_id": "E8820V2",
+      "soc": "mt7621",
+      "radios": "7603+7612",
+      "usb": true,
+      "kernel_config": "kernel-3.4.x.config",
+      "ci_group": "",
+      "release_tier": "compatibility"
+    },
+    {
+      "target": "HC5661A",
+      "board_id": "HC5661A",
+      "soc": "mt7628",
+      "radios": "7628",
+      "usb": false,
+      "kernel_config": "kernel-3.4.x.config",
+      "ci_group": "",
+      "release_tier": "compatibility"
+    },
+    {
+      "target": "HC5761A",
+      "board_id": "HC5761A",
+      "soc": "mt7628",
+      "radios": "7628+7610",
+      "usb": true,
+      "kernel_config": "kernel-3.4.x.config",
+      "ci_group": "",
+      "release_tier": "compatibility"
+    },
+    {
+      "target": "HC5861B",
+      "board_id": "HC5861B",
+      "soc": "mt7628",
+      "radios": "7628+7612",
+      "usb": false,
+      "kernel_config": "kernel-3.4.x.config",
+      "ci_group": "mt7628",
+      "release_tier": "compatibility"
+    },
+    {
+      "target": "JCG-836PRO",
+      "board_id": "JCG-836PRO",
+      "soc": "mt7621",
+      "radios": "7615",
+      "usb": true,
+      "kernel_config": "kernel-3.4.x-5.0.config",
+      "ci_group": "mt7621-usb",
+      "release_tier": "secondary"
+    },
+    {
+      "target": "JCG-AC860M",
+      "board_id": "JCG-AC860M",
+      "soc": "mt7621",
+      "radios": "7615+7615",
+      "usb": true,
+      "kernel_config": "kernel-3.4.x-5.0.config",
+      "ci_group": "mt7621-usb",
+      "release_tier": "secondary"
+    },
+    {
+      "target": "JCG-Q20",
+      "board_id": "JCG-Q20",
+      "soc": "mt7621",
+      "radios": "7915",
+      "usb": false,
+      "kernel_config": "kernel-3.4.x.config",
+      "ci_group": "",
+      "release_tier": "secondary"
+    },
+    {
+      "target": "JCG-Y2",
+      "board_id": "JCG-Y2",
+      "soc": "mt7621",
+      "radios": "7615",
+      "usb": true,
+      "kernel_config": "kernel-3.4.x-5.0.config",
+      "ci_group": "",
+      "release_tier": "secondary"
+    },
+    {
+      "target": "K2P-USB",
+      "board_id": "K2P-USB",
+      "soc": "mt7621",
+      "radios": "7615",
+      "usb": true,
+      "kernel_config": "kernel-3.4.x-5.0.config",
+      "ci_group": "",
+      "release_tier": "secondary"
+    },
+    {
+      "target": "K2P",
+      "board_id": "K2P",
+      "soc": "mt7621",
+      "radios": "7615",
+      "usb": false,
+      "kernel_config": "kernel-3.4.x-5.0.config",
+      "ci_group": "mt7621",
+      "release_tier": "primary"
+    },
+    {
+      "target": "K2P_nano",
+      "board_id": "K2P",
+      "soc": "mt7621",
+      "radios": "7615",
+      "usb": false,
+      "kernel_config": "kernel-3.4.x-5.0.config",
+      "ci_group": "mt7621",
+      "release_tier": "primary"
+    },
+    {
+      "target": "MI-3",
+      "board_id": "MI-3",
+      "soc": "mt7620",
+      "radios": "2860+7612",
+      "usb": true,
+      "kernel_config": "kernel-3.4.x.config",
+      "ci_group": "",
+      "release_tier": "compatibility"
+    },
+    {
+      "target": "MI-3C",
+      "board_id": "MI-3C",
+      "soc": "mt7628",
+      "radios": "7628",
+      "usb": false,
+      "kernel_config": "kernel-3.4.x.config",
+      "ci_group": "",
+      "release_tier": "compatibility"
+    },
+    {
+      "target": "MI-4",
+      "board_id": "MI-4",
+      "soc": "mt7621",
+      "radios": "7603+7612",
+      "usb": false,
+      "kernel_config": "kernel-3.4.x.config",
+      "ci_group": "",
+      "release_tier": "compatibility"
+    },
+    {
+      "target": "MI-MINI",
+      "board_id": "MI-MINI",
+      "soc": "mt7620",
+      "radios": "2860+7612",
+      "usb": true,
+      "kernel_config": "kernel-3.4.x.config",
+      "ci_group": "mt7620",
+      "release_tier": "compatibility"
+    },
+    {
+      "target": "MI-NANO",
+      "board_id": "MI-NANO",
+      "soc": "mt7628",
+      "radios": "7628",
+      "usb": false,
+      "kernel_config": "kernel-3.4.x.config",
+      "ci_group": "mt7628",
+      "release_tier": "compatibility"
+    },
+    {
+      "target": "MI-R3G",
+      "board_id": "MI-R3G",
+      "soc": "mt7621",
+      "radios": "7603+7612",
+      "usb": true,
+      "kernel_config": "kernel-3.4.x.config",
+      "ci_group": "mt7621-usb",
+      "release_tier": "compatibility"
+    },
+    {
+      "target": "MI-R3P-breed",
+      "board_id": "MI-R3P",
+      "soc": "mt7621",
+      "radios": "7615+7615",
+      "usb": true,
+      "kernel_config": "kernel-3.4.x-breed.config",
+      "ci_group": "",
+      "release_tier": "secondary"
+    },
+    {
+      "target": "MI-R3P",
+      "board_id": "MI-R3P",
+      "soc": "mt7621",
+      "radios": "7615+7615",
+      "usb": true,
+      "kernel_config": "kernel-3.4.x.config",
+      "ci_group": "",
+      "release_tier": "secondary"
+    },
+    {
+      "target": "MI-R4A",
+      "board_id": "MI-R4A",
+      "soc": "mt7621",
+      "radios": "7603+7612",
+      "usb": false,
+      "kernel_config": "kernel-3.4.x.config",
+      "ci_group": "",
+      "release_tier": "compatibility"
+    },
+    {
+      "target": "MR2600",
+      "board_id": "MR2600",
+      "soc": "mt7621",
+      "radios": "7615+7615",
+      "usb": true,
+      "kernel_config": "kernel-3.4.x-5.0.config",
+      "ci_group": "",
+      "release_tier": "secondary"
+    },
+    {
+      "target": "MSG1500",
+      "board_id": "MSG1500",
+      "soc": "mt7621",
+      "radios": "7603+7612",
+      "usb": true,
+      "kernel_config": "kernel-3.4.x.config",
+      "ci_group": "",
+      "release_tier": "compatibility"
+    },
+    {
+      "target": "MZ-R13",
+      "board_id": "MZ-R13",
+      "soc": "mt7628",
+      "radios": "7628",
+      "usb": false,
+      "kernel_config": "kernel-3.4.x.config",
+      "ci_group": "mt7628",
+      "release_tier": "compatibility"
+    },
+    {
+      "target": "MZ-R13P",
+      "board_id": "MZ-R13P",
+      "soc": "mt7628",
+      "radios": "7628+7610",
+      "usb": false,
+      "kernel_config": "kernel-3.4.x.config",
+      "ci_group": "mt7628",
+      "release_tier": "compatibility"
+    },
+    {
+      "target": "NETGEAR-BZV",
+      "board_id": "NETGEAR-BZV",
+      "soc": "mt7621",
+      "radios": "7615+7615",
+      "usb": true,
+      "kernel_config": "kernel-3.4.x-5.0.config",
+      "ci_group": "",
+      "release_tier": "secondary"
+    },
+    {
+      "target": "NETGEAR-CHJ",
+      "board_id": "NETGEAR-CHJ",
+      "soc": "mt7621",
+      "radios": "7603+7615",
+      "usb": true,
+      "kernel_config": "kernel-3.4.x-5.0.config",
+      "ci_group": "",
+      "release_tier": "secondary"
+    },
+    {
+      "target": "NEWIFI-MINI",
+      "board_id": "NEWIFI-MINI",
+      "soc": "mt7620",
+      "radios": "2860+7612",
+      "usb": true,
+      "kernel_config": "kernel-3.4.x.config",
+      "ci_group": "mt7620",
+      "release_tier": "compatibility"
+    },
+    {
+      "target": "NEWIFI3",
+      "board_id": "NEWIFI3",
+      "soc": "mt7621",
+      "radios": "7603+7612",
+      "usb": true,
+      "kernel_config": "kernel-3.4.x.config",
+      "ci_group": "mt7621-usb",
+      "release_tier": "compatibility"
+    },
+    {
+      "target": "OYE-001",
+      "board_id": "OYE-001",
+      "soc": "mt7620",
+      "radios": "7620",
+      "usb": true,
+      "kernel_config": "kernel-3.4.x.config",
+      "ci_group": "",
+      "release_tier": "compatibility"
+    },
+    {
+      "target": "PSG1208",
+      "board_id": "PSG1208",
+      "soc": "mt7620",
+      "radios": "2860+7612",
+      "usb": false,
+      "kernel_config": "kernel-3.4.x.config",
+      "ci_group": "mt7620",
+      "release_tier": "compatibility"
+    },
+    {
+      "target": "PSG1218",
+      "board_id": "PSG1218",
+      "soc": "mt7620",
+      "radios": "2860+7612",
+      "usb": false,
+      "kernel_config": "kernel-3.4.x.config",
+      "ci_group": "mt7620",
+      "release_tier": "compatibility"
+    },
+    {
+      "target": "PSG1218_nano",
+      "board_id": "PSG1218",
+      "soc": "mt7620",
+      "radios": "2860+7612",
+      "usb": false,
+      "kernel_config": "kernel-3.4.x.config",
+      "ci_group": "",
+      "release_tier": "compatibility"
+    },
+    {
+      "target": "R2100",
+      "board_id": "R2100",
+      "soc": "mt7621",
+      "radios": "7603+7615",
+      "usb": false,
+      "kernel_config": "kernel-3.4.x-5.0.config",
+      "ci_group": "",
+      "release_tier": "secondary"
+    },
+    {
+      "target": "R6220",
+      "board_id": "R6220",
+      "soc": "mt7621",
+      "radios": "7603+7612",
+      "usb": true,
+      "kernel_config": "kernel-3.4.x.config",
+      "ci_group": "",
+      "release_tier": "compatibility"
+    },
+    {
+      "target": "RM2100",
+      "board_id": "RM2100",
+      "soc": "mt7621",
+      "radios": "7603+7615",
+      "usb": false,
+      "kernel_config": "kernel-3.4.x-5.0.config",
+      "ci_group": "mt7621",
+      "release_tier": "primary"
+    },
+    {
+      "target": "RT-AC1200GU",
+      "board_id": "RT-AC1200GU",
+      "soc": "mt7621",
+      "radios": "7603+7612",
+      "usb": true,
+      "kernel_config": "kernel-3.4.x.config",
+      "ci_group": "",
+      "release_tier": "compatibility"
+    },
+    {
+      "target": "WDR7300",
+      "board_id": "WDR7300",
+      "soc": "mt7621",
+      "radios": "7603+7615",
+      "usb": false,
+      "kernel_config": "kernel-3.4.x-5.0.config",
+      "ci_group": "",
+      "release_tier": "secondary"
+    },
+    {
+      "target": "WR1200JS",
+      "board_id": "WR1200JS",
+      "soc": "mt7621",
+      "radios": "7603+7612",
+      "usb": true,
+      "kernel_config": "kernel-3.4.x.config",
+      "ci_group": "",
+      "release_tier": "compatibility"
+    },
+    {
+      "target": "XY-C1",
+      "board_id": "XY-C1",
+      "soc": "mt7621",
+      "radios": "none",
+      "usb": true,
+      "kernel_config": "kernel-3.4.x.config",
+      "ci_group": "mt7621-usb",
+      "release_tier": "secondary"
+    },
+    {
+      "target": "ZTE_E8820S",
+      "board_id": "ZTE_E8820S",
+      "soc": "mt7621",
+      "radios": "7603+7612",
+      "usb": true,
+      "kernel_config": "kernel-3.4.x.config",
+      "ci_group": "",
+      "release_tier": "compatibility"
+    }
+  ]
+}

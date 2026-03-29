@@ -206,7 +206,14 @@ Actions -> Build Firmware -> Run workflow
 
 - `build_mode` 选择 `single-target` 时，可直接从 `target` 下拉框选择要编译的型号
 - `build_mode` 选择 `variant-batch` 时，可从 `variant` 下拉框选择批量构建的平台分组
-- `target` 下拉列表与 `trunk/configs/templates/` 中的机型模板保持一致，避免手填型号出错
+- `target` 下拉列表由 [`.github/firmware-targets.json`](./.github/firmware-targets.json) 统一描述，并由 [`.github/scripts/firmware_targets.py`](./.github/scripts/firmware_targets.py) 生成 `Build Firmware` 工作流
+- `variant-batch` 使用同一份目标目录中的分组定义，避免工作流里重复维护机型列表
+- 单次构建 artifact 默认包含：
+  - `Padavan-型号-内核版本.trx`
+  - `md5sum.txt`
+  - `manifest.json`
+- `manifest.json` 会记录目标型号、板级映射、SoC、无线组合、内核配置、发布层级和 git revision，便于回溯产物来源
+- 当前支持策略以 `MT7621` 为主线优先优化对象；其他平台和高风险旧无线组合保留支持，但更多按兼容性范围维护
 
 ***
 
