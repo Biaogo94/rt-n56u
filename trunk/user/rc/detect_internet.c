@@ -355,7 +355,7 @@ catch_sig_detect_internet(int sig)
 void
 stop_detect_internet(void)
 {
-	doSystem("killall %s %s", "-q", "detect_internet");
+	signal_service("detect_internet", "-q");
 }
 
 int

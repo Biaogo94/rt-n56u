@@ -782,21 +782,21 @@ reload_nat_modules(void)
 
 	if (sfe_loaded && !sfe_enable) {
 		module_smart_unload("fast_classifier", 1);
-		doSystem("echo 1 > /proc/sys/net/netfilter/nf_conntrack_tcp_be_liberal");
-		doSystem("echo 1 > /proc/sys/net/netfilter/nf_conntrack_tcp_no_window_check");
+		fput_int("/proc/sys/net/netfilter/nf_conntrack_tcp_be_liberal", 1);
+		fput_int("/proc/sys/net/netfilter/nf_conntrack_tcp_no_window_check", 1);
 		sfe_loaded = 0;
 	}
 	if (sfe_enable && !sfe_loaded) {
-		doSystem("echo 0 > /proc/sys/net/netfilter/nf_conntrack_tcp_be_liberal");
-		doSystem("echo 0 > /proc/sys/net/netfilter/nf_conntrack_tcp_no_window_check");
+		fput_int("/proc/sys/net/netfilter/nf_conntrack_tcp_be_liberal", 0);
+		fput_int("/proc/sys/net/netfilter/nf_conntrack_tcp_no_window_check", 0);
 		module_smart_load("fast_classifier", NULL);
 		sfe_loaded = 1;
 	}
 	if (sfe_loaded) {
 		if (sfe_enable == 1)
-			doSystem("echo 0 > /sys/fast_classifier/skip_to_bridge_ingress");
+			fput_int("/sys/fast_classifier/skip_to_bridge_ingress", 0);
 		else if (sfe_enable == 2)
-			doSystem("echo 1 > /sys/fast_classifier/skip_to_bridge_ingress");
+			fput_int("/sys/fast_classifier/skip_to_bridge_ingress", 1);
 	}
 #endif
 }

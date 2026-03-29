@@ -765,7 +765,7 @@ full_restart_lan(void)
 	start_networkmap(1);
 
 	/* force httpd logout */
-	doSystem("killall %s %s", "-SIGUSR1", "httpd");
+	signal_service_if_running("httpd", "-SIGUSR1");
 }
 
 void

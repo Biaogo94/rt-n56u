@@ -155,7 +155,7 @@ void
 restart_networkmap(void)
 {
 	if (pids("networkmap"))
-		doSystem("killall %s %s", "-SIGUSR1", "networkmap");
+		signal_service("networkmap", "-SIGUSR1");
 	else
 		start_networkmap(0);
 }

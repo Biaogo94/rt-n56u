@@ -1108,7 +1108,7 @@ stop_wan(void)
 	kill_services(svcs_ppp, 6, 1);
 
 	if (pids("udhcpc")) {
-		doSystem("killall %s %s", "-SIGUSR2", "udhcpc");
+		signal_service("udhcpc", "-SIGUSR2");
 		usleep(300000);
 	}
 

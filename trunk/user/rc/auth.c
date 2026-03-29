@@ -163,7 +163,7 @@ int wpacli_main(int argc, char **argv)
 	else if (get_wan_proto(unit) == IPV4_WAN_PROTO_IPOE_DHCP)
 	{
 		/* Renew DHCP lease */
-		doSystem("killall %s %s", "-SIGUSR1", "udhcpc");
+		signal_service_if_running("udhcpc", "-SIGUSR1");
 	}
 #endif
 

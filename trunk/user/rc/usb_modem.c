@@ -674,8 +674,8 @@ notify_modem_on_internet_state_changed(int has_internet)
 void
 safe_remove_usb_modem(void)
 {
-	doSystem("killall %s %s", "-q", "usb_modeswitch");
-	doSystem("killall %s %s", "-q", "eject");
+	signal_service("usb_modeswitch", "-q");
+	signal_service("eject", "-q");
 
 	if (nvram_get_int("modem_type") == 3)
 	{
@@ -683,7 +683,7 @@ safe_remove_usb_modem(void)
 		
 		if (pids(svcs[0]))
 		{
-			doSystem("killall %s %s", "-SIGUSR2", svcs[0]);
+			signal_service(svcs[0], "-SIGUSR2");
 			usleep(300000);
 			
 			kill_services(svcs, 3, 1);

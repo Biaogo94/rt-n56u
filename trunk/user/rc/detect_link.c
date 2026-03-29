@@ -391,7 +391,7 @@ catch_sig_detect_link(int sig)
 void
 stop_detect_link(void)
 {
-	doSystem("killall %s %s", "-q", "detect_link");
+	signal_service("detect_link", "-q");
 }
 
 int

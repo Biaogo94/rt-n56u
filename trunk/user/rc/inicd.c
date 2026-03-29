@@ -64,7 +64,7 @@ catch_sig_inicd(int sig)
 int
 stop_inicd(void)
 {
-	return doSystem("killall %s %s", "-q", "inicd");
+	return signal_service("inicd", "-q");
 }
 
 int
