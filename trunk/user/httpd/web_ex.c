@@ -98,7 +98,7 @@ sys_reboot(void)
 {
 #ifdef MTD_FLASH_32M_REBOOT_BUG
 	doSystem("/sbin/mtd_storage.sh %s", "save");
-	system("/bin/mtd_write -r unlock mtd1");
+	eval("/bin/mtd_write", "-r", "unlock", "mtd1");
 #else
 	kill(1, SIGTERM);
 #endif
@@ -166,7 +166,9 @@ sys_script(char *name)
 			doSystem("%s >/tmp/syscmd.log 2>&1\n", SystemCmd);
 			SystemCmd[0] = '\0';
 		} else {
-			system("echo -n > /tmp/syscmd.log\n");
+			FILE *fp = fopen("/tmp/syscmd.log", "w");
+			if (fp)
+				fclose(fp);
 		}
 	}
 	else if (strcmp(name, "syslog.sh")==0)
@@ -241,7 +243,7 @@ sys_script(char *name)
 	else if (strcmp(name,"ddnsclient")==0)
 	{
 		if (pids("inadyn"))
-			doSystem("killall %s %s", "-SIGUSR1", "inadyn");
+			eval("killall", "-SIGUSR1", "inadyn");
 	}
 	else if (strcmp(name,"hostname_check") == 0)
 	{
@@ -3220,7 +3222,7 @@ apply_cgi(const char *url, webs_t wp)
 	}
 	else if (!strcmp(value, " Shutdown "))
 	{
-		system("shutdown");
+		eval("shutdown");
 		websRedirect(wp, current_url);
 		return 0;
 	}
@@ -3685,7 +3687,7 @@ do_restore_nv_cgi(const char *url, FILE *stream)
 	int ret = -1;
 
 	if (f_exists(upload_file) && get_login_safe()) {
-		doSystem("killall %s %s", "-q", "watchdog");
+		eval("killall", "-q", "watchdog");
 		sleep(1);
 		ret = eval("/usr/sbin/nvram", "restore", upload_file);
 		if (ret != 0) {

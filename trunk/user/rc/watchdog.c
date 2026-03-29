@@ -164,7 +164,7 @@ httpd_check_v2()
 		if (nvram_get_int("http_lanport") != http_port)
 		{
 			if (pids("wget"))
-				system("killall wget");
+				eval("killall", "wget");
 			return 1;
 		}
 		
@@ -174,7 +174,7 @@ httpd_check_v2()
 	if (!httpd_live)
 	{
 		if (pids("wget"))
-			system("killall wget");
+			eval("killall", "wget");
 		
 		dbg("httpd is so dead!!!\n");
 		
@@ -956,7 +956,7 @@ static void httpd_process_check(void)
 		httpd_missing = 0;
 		stop_httpd();
 #ifdef HTTPD_CHECK
-		system("killall -9 httpd");
+		eval("killall", "-9", "httpd");
 		sleep(1);
 		remove(DETECT_HTTPD_FILE);
 #endif
@@ -999,7 +999,7 @@ ntpc_updated_main(int argc, char *argv[])
 	if (offset) {
 #if defined (USE_RTC_HCTOSYS)
 		/* update current system time to RTC chip */
-		system("hwclock -w");
+		eval("hwclock", "-w");
 #endif
 		logmessage("NTP Client", "System time changed, offset: %ss", offset);
 	}
