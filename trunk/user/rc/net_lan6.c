@@ -147,7 +147,7 @@ void reload_lan_addr6(void)
 	clear_if_addr6(IFNAME_BR);
 	lan_addr6 = nvram_safe_get("lan_addr6");
 	if (*lan_addr6)
-		doSystem("ip -6 addr add %s dev %s", lan_addr6, IFNAME_BR);
+		eval("ip", "-6", "addr", "add", lan_addr6, "dev", IFNAME_BR);
 }
 
 void clear_lan_addr6(void)

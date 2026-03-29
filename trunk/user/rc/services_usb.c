@@ -184,7 +184,7 @@ exec_printer_daemons(int call_fw)
 			has_printer = 1;
 			if (call_fw) {
 				if (check_if_file_exist(opt_printer_script))
-					doSystem("%s %s", opt_printer_script, dev_lp);
+					eval(opt_printer_script, dev_lp);
 			}
 			start_p910nd(dev_lp);
 		}

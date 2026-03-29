@@ -481,7 +481,7 @@ flush_route_caches(void)
 void
 clear_if_route4(char *ifname)
 {
-	doSystem("ip route flush dev %s scope %s", ifname, "global");
+	eval("ip", "route", "flush", "dev", ifname, "scope", "global");
 }
 
 int

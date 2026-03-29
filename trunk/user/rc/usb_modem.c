@@ -445,15 +445,27 @@ mbim_control_network(const char* control_node, int is_start)
 static int
 ncm_control_network(const char* control_node, int is_start)
 {
-	return doSystem("/bin/comgt -d /dev/%s -s %s/ppp/3g/%s",
-		control_node, MODEM_SCRIPTS_DIR, (is_start) ? "NCM_conn.scr" : "NCM_disconn.scr");
+	char control_path[32];
+	char script_path[64];
+
+	snprintf(control_path, sizeof(control_path), "/dev/%s", control_node);
+	snprintf(script_path, sizeof(script_path), "%s/ppp/3g/%s",
+		MODEM_SCRIPTS_DIR, (is_start) ? "NCM_conn.scr" : "NCM_disconn.scr");
+
+	return eval("/bin/comgt", "-d", control_path, "-s", script_path);
 }
 
 static int
 sierra_control_network(const char* control_node, int is_start)
 {
-	return doSystem("/bin/comgt -d /dev/%s -s %s/ppp/3g/%s",
-		control_node, MODEM_SCRIPTS_DIR, (is_start) ? "Sierra_conn.scr" : "Sierra_disconn.scr");
+	char control_path[32];
+	char script_path[64];
+
+	snprintf(control_path, sizeof(control_path), "/dev/%s", control_node);
+	snprintf(script_path, sizeof(script_path), "%s/ppp/3g/%s",
+		MODEM_SCRIPTS_DIR, (is_start) ? "Sierra_conn.scr" : "Sierra_disconn.scr");
+
+	return eval("/bin/comgt", "-d", control_path, "-s", script_path);
 }
 
 #if 0
@@ -790,7 +802,7 @@ int
 launch_usb_modeswitch(int vid, int pid, int inquire)
 {
 	char eject_file[64], addon[32];
-	const char *arg_inq = "";
+	char vid_arg[16], pid_arg[16];
 	const struct ums_ma_addon_t *ua;
 	int i;
 
@@ -828,10 +840,12 @@ launch_usb_modeswitch(int vid, int pid, int inquire)
 		}
 	}
 
+	snprintf(vid_arg, sizeof(vid_arg), "0x%04x", vid);
+	snprintf(pid_arg, sizeof(pid_arg), "0x%04x", pid);
 	if (inquire)
-		arg_inq = "-D -I ";
+		return eval("/bin/usb_modeswitch", "-D", "-I", "-v", vid_arg, "-p", pid_arg, "-c", eject_file);
 
-	return doSystem("/bin/usb_modeswitch %s-v 0x%04x -p 0x%04x -c %s", arg_inq, vid, pid, eject_file);
+	return eval("/bin/usb_modeswitch", "-v", vid_arg, "-p", pid_arg, "-c", eject_file);
 }
 
 static int

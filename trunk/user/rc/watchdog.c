@@ -102,8 +102,10 @@ static int
 httpd_check_v2()
 {
 	FILE *fp = NULL;
+	int pid;
 	int i, httpd_live, http_port;
 	char line[80], *login_timestamp;
+	char http_url[64];
 	long now;
 	static int check_count_down = 3;
 	static int httpd_timer = 0;
@@ -137,9 +139,13 @@ httpd_check_v2()
 	remove(DETECT_HTTPD_FILE);
 
 	http_port = nvram_get_int("http_lanport");
+	snprintf(http_url, sizeof(http_url), "http://127.0.0.1:%d/httpd_check.htm", http_port);
 
 	/* httpd will not count 127.0.0.1 */
-	doSystem("wget -q http://127.0.0.1:%d/httpd_check.htm -O %s &", http_port, DETECT_HTTPD_FILE);
+	{
+		char *wget_argv[] = { "wget", "-q", http_url, "-O", DETECT_HTTPD_FILE, NULL };
+		_eval(wget_argv, NULL, 0, &pid);
+	}
 
 	httpd_live = 0;
 	for (i=0; i < 3; i++)
@@ -733,14 +739,16 @@ ez_action_shutdown(void)
 static void
 ez_action_user_script(int script_param)
 {
-	const char *ez_script = "/etc/storage/ez_buttons_script.sh";
+	char *ez_script = "/etc/storage/ez_buttons_script.sh";
+	char script_param_str[16];
 
 	if (!check_if_file_exist(ez_script))
 		return;
 
 	logmessage("watchdog", "Execute %s %d", ez_script, script_param);
 
-	doSystem("%s %d", ez_script, script_param);
+	snprintf(script_param_str, sizeof(script_param_str), "%d", script_param);
+	eval(ez_script, script_param_str);
 }
 
 static void
