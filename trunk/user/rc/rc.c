@@ -43,6 +43,7 @@
 #include "gpio_pins.h"
 #include "switch.h"
 #include <ralink_priv.h>
+#include <wireless_caps.h>
 
 extern struct nvram_pair router_defaults[];
 
@@ -51,6 +52,47 @@ static int nvram_modem_type = 0;
 static int nvram_modem_rule = 0;
 static int nvram_nf_nat_type = 0;
 static int nvram_ipv6_type = 0;
+
+static void
+normalize_wlan_runtime_caps(int is_aband)
+{
+	int stream_max_tx, stream_max_rx;
+	int stream_tx, stream_rx;
+	int max_ht_bw;
+
+	if (strlen(nvram_wlan_get(is_aband, "gmode")) < 1)
+		nvram_wlan_set_int(is_aband, "gmode", wl_cap_default_gmode(is_aband));
+
+	max_ht_bw = wl_cap_max_ht_bw(is_aband);
+	if (nvram_wlan_get_int(is_aband, "HT_BW") > max_ht_bw)
+		nvram_wlan_set_int(is_aband, "HT_BW", max_ht_bw);
+
+	if (!wl_cap_supports_kv(is_aband) && nvram_wlan_get_int(is_aband, "HT_80211KV") != 0)
+		nvram_wlan_set_int(is_aband, "HT_80211KV", 0);
+
+	if (!wl_cap_supports_ft(is_aband) && nvram_wlan_get_int(is_aband, "HT_80211R") != 0)
+		nvram_wlan_set_int(is_aband, "HT_80211R", 0);
+
+	if (is_aband) {
+		if (!wl_cap_has_5g_mumimo() && nvram_wlan_get_int(1, "mumimo") != 0)
+			nvram_wlan_set_int(1, "mumimo", 0);
+		stream_max_tx = BOARD_NUM_ANT_5G_TX;
+		stream_max_rx = BOARD_NUM_ANT_5G_RX;
+	} else {
+		if (!wl_cap_has_2g_turbo_qam() && nvram_wlan_get_int(0, "turbo_qam") != 0)
+			nvram_wlan_set_int(0, "turbo_qam", 0);
+		stream_max_tx = BOARD_NUM_ANT_2G_TX;
+		stream_max_rx = BOARD_NUM_ANT_2G_RX;
+	}
+
+	stream_tx = nvram_wlan_get_int(is_aband, "stream_tx");
+	stream_rx = nvram_wlan_get_int(is_aband, "stream_rx");
+
+	if (stream_max_tx > 0 && (stream_tx < 1 || stream_tx > stream_max_tx))
+		nvram_wlan_set_int(is_aband, "stream_tx", stream_max_tx);
+	if (stream_max_rx > 0 && (stream_rx < 1 || stream_rx > stream_max_rx))
+		nvram_wlan_set_int(is_aband, "stream_rx", stream_max_rx);
+}
 
 static int
 nvram_restore_defaults(void)
@@ -475,25 +517,7 @@ nvram_convert_misc_values(void)
 	if (strlen(nvram_wlan_get(1, "wpa_mode")) < 1)
 		nvram_wlan_set_int(1, "wpa_mode", 0);
 
-#if BOARD_HAS_5G_11AC
-	if (strlen(nvram_wlan_get(1, "gmode")) < 1)
-		nvram_wlan_set_int(1, "gmode", 4); // a/n/ac Mixed
-
-	if (nvram_wlan_get_int(1, "HT_BW") > 3)
-		nvram_wlan_set_int(1, "HT_BW", 3);
-#else
-	if (strlen(nvram_wlan_get(1, "gmode")) < 1)
-		nvram_wlan_set_int(1, "gmode", 2); // a/n Mixed
-
-	if (nvram_wlan_get_int(1, "HT_BW") > 1)
-		nvram_wlan_set_int(1, "HT_BW", 1);
-#endif
-
-	if (nvram_wlan_get_int(1, "stream_tx") > BOARD_NUM_ANT_5G_TX)
-		nvram_wlan_set_int(1, "stream_tx", BOARD_NUM_ANT_5G_TX);
-
-	if (nvram_wlan_get_int(1, "stream_rx") > BOARD_NUM_ANT_5G_RX)
-		nvram_wlan_set_int(1, "stream_rx", BOARD_NUM_ANT_5G_RX);
+	normalize_wlan_runtime_caps(1);
 #endif
 
 	if (strlen(nvram_wlan_get(0, "ssid")) < 1)
@@ -503,17 +527,7 @@ nvram_convert_misc_values(void)
 	char_to_ascii(buff, nvram_wlan_get(0, "ssid"));
 	nvram_wlan_set(0, "ssid2", buff);
 
-	if (strlen(nvram_wlan_get(0, "gmode")) < 1)
-		nvram_wlan_set_int(0, "gmode", 2); // b/g/n Mixed
-
-	if (nvram_wlan_get_int(0, "HT_BW") > 1)
-		nvram_wlan_set_int(0, "HT_BW", 1);
-
-	if (nvram_wlan_get_int(0, "stream_tx") > BOARD_NUM_ANT_2G_TX)
-		nvram_wlan_set_int(0, "stream_tx", BOARD_NUM_ANT_2G_TX);
-
-	if (nvram_wlan_get_int(0, "stream_rx") > BOARD_NUM_ANT_2G_RX)
-		nvram_wlan_set_int(0, "stream_rx", BOARD_NUM_ANT_2G_RX);
+	normalize_wlan_runtime_caps(0);
 
 	nvram_set_temp("ntpc_counter", "0000000000");
 	nvram_set_temp("login_timestamp", "0000000000");

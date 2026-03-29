@@ -159,13 +159,7 @@ struct nvram_pair router_defaults[] = {
 	/* 5G Wireless parameters */
 	{ "wl_country_code", DEF_WLAN_5G_CC },		/* Country Code (default obtained from driver) */
 	{ "wl_ssid", DEF_WLAN_5G_SSID },		/* Service set ID (network name) */
-#if WL_CAP_5G_11AX
-	{ "wl_gmode", "5" },			/* A/N/AC/AX Mixed */
-#elif BOARD_HAS_5G_11AC
-	{ "wl_gmode", "4" },			/* A/N/AC Mixed */
-#else
-	{ "wl_gmode", "2" },			/* A/N Mixed */
-#endif
+	{ "wl_gmode", STR(WL_CAP_DEFAULT_5G_GMODE) },	/* capability-aware default mode */
 	{ "wl_mcs_mode", "0" },
 	{ "wl_channel", "0" },			/* Channel number */
 	{ "wl_bcn", "100" },			/* Beacon interval */
@@ -199,11 +193,7 @@ struct nvram_pair router_defaults[] = {
 	{ "wl_PktAggregate", "1" },
 	{ "wl_APSDCapable", "0" },
 	{ "wl_HT_OpMode", "0" },
-#if BOARD_HAS_5G_11AC
-	{ "wl_HT_BW", "2" },
-#else
-	{ "wl_HT_BW", "1" },
-#endif
+	{ "wl_HT_BW", STR(WL_CAP_DEFAULT_5G_HT_BW) },
 	{ "wl_txbf", "1" },
 	{ "wl_ssid2",  DEF_WLAN_5G_SSID },
 	{ "wl_mode_x", "0" },
@@ -274,11 +264,7 @@ struct nvram_pair router_defaults[] = {
 	/* 2G Wireless parameters */
 	{ "rt_country_code", DEF_WLAN_2G_CC },
 	{ "rt_ssid", DEF_WLAN_2G_SSID },
-#if WL_CAP_2G_11AX
-	{ "rt_gmode", "6" },			/* b/g/n/ax mixed */
-#else
-	{ "rt_gmode", "5" },			/* g/n mixed */
-#endif
+	{ "rt_gmode", STR(WL_CAP_DEFAULT_2G_GMODE) },	/* capability-aware default mode */
 	{ "rt_mcs_mode", "0" },
 	{ "rt_channel", "0" },
 	{ "rt_bcn", "100" },
@@ -291,7 +277,7 @@ struct nvram_pair router_defaults[] = {
 	{ "rt_macmode", "disabled" },
 	{ "rt_mrate", "2" },
 	{ "rt_mode", "ap" },
-	{ "rt_HT_BW", "1" },
+	{ "rt_HT_BW", STR(WL_CAP_DEFAULT_2G_HT_BW) },
 	{ "rt_HT_EXTCHA", "1" },
 	{ "rt_HT_OpMode", "0" },
 	{ "rt_wme", "1" },

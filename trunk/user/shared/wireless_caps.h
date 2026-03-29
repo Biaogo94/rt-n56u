@@ -134,6 +134,38 @@
 #define WL_CAP_2G_FT 0
 #endif
 
+#if WL_CAP_5G_11AX
+#define WL_CAP_DEFAULT_5G_GMODE 5
+#elif WL_CAP_5G_VHT
+#define WL_CAP_DEFAULT_5G_GMODE 4
+#else
+#define WL_CAP_DEFAULT_5G_GMODE 2
+#endif
+
+#if WL_CAP_2G_11AX
+#define WL_CAP_DEFAULT_2G_GMODE 6
+#else
+#define WL_CAP_DEFAULT_2G_GMODE 5
+#endif
+
+#if WL_CAP_5G_VHT
+#define WL_CAP_DEFAULT_5G_HT_BW 2
+#else
+#define WL_CAP_DEFAULT_5G_HT_BW 1
+#endif
+
+#define WL_CAP_DEFAULT_2G_HT_BW 1
+
+#if WL_CAP_5G_VHT160
+#define WL_CAP_MAX_5G_HT_BW 3
+#elif WL_CAP_5G_VHT
+#define WL_CAP_MAX_5G_HT_BW 2
+#else
+#define WL_CAP_MAX_5G_HT_BW 1
+#endif
+
+#define WL_CAP_MAX_2G_HT_BW 1
+
 static int
 wl_cap_get_band_wid(int is_aband)
 {
@@ -258,6 +290,24 @@ static int
 wl_cap_supports_vht_stbc(int is_aband)
 {
 	return (is_aband) ? WL_CAP_5G_STBC : 0;
+}
+
+static int
+wl_cap_default_gmode(int is_aband)
+{
+	return (is_aband) ? WL_CAP_DEFAULT_5G_GMODE : WL_CAP_DEFAULT_2G_GMODE;
+}
+
+static int
+wl_cap_default_ht_bw(int is_aband)
+{
+	return (is_aband) ? WL_CAP_DEFAULT_5G_HT_BW : WL_CAP_DEFAULT_2G_HT_BW;
+}
+
+static int
+wl_cap_max_ht_bw(int is_aband)
+{
+	return (is_aband) ? WL_CAP_MAX_5G_HT_BW : WL_CAP_MAX_2G_HT_BW;
 }
 
 #endif
