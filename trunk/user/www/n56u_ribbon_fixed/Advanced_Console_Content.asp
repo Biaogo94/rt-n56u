@@ -119,7 +119,7 @@ function checkEnter(e){
                                 <div class="row-fluid">
                                     <div id="tabMenu" class="submenuBlock"></div>
                                     <div class="alert alert-danger" style="margin: 10px;"><#Console_warn#></div>
-                                    <div id="console_disabled_alert" class="alert alert-info" style="margin: 10px; display: none;">Command console is disabled by default. Set <code>nvram set debug_cmd_enable=1</code> and commit to enable it.</div>
+                                    <div id="console_disabled_alert" class="alert alert-info" style="margin: 10px; display: none;">Command console is disabled by default. Set <code>nvram set debug_cmd_enable=1</code> and commit to enable it. When enabled, only single-line commands are accepted and execution is limited to 10 seconds.</div>
 
                                     <table width="100%" cellpadding="4" cellspacing="0" class="table">
                                         <tr>

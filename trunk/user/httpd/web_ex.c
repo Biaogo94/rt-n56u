@@ -160,6 +160,27 @@ write_syscmd_log(const char *message)
 	fclose(fp);
 }
 
+#define SYSTEM_CMD_TIMEOUT_SEC 10
+
+static void
+run_syscmd_console(const char *command)
+{
+	char shell_cmd[256];
+	char *const argv[] = { "/bin/sh", "-c", shell_cmd, NULL };
+
+	if (!command || !command[0]) {
+		write_syscmd_log(NULL);
+		return;
+	}
+
+	if (snprintf(shell_cmd, sizeof(shell_cmd), "PATH=%s; export PATH; %s", SYS_EXEC_PATH_OPT, command) >= (int)sizeof(shell_cmd)) {
+		write_syscmd_log("Command is too long.");
+		return;
+	}
+
+	_eval(argv, ">/tmp/syscmd.log", SYSTEM_CMD_TIMEOUT_SEC, NULL);
+}
+
 static int
 ensure_admin_ssh_dir(void)
 {
@@ -197,10 +218,7 @@ sys_script(char *name)
 			SystemCmd[0] = '\0';
 			write_syscmd_log("Command console is disabled. Set 'nvram set debug_cmd_enable=1' and commit to enable it.");
 		} else if (SystemCmd[0] && get_login_safe()) {
-			char path_env[64];
-			snprintf(path_env, sizeof(path_env), "PATH=%s", SYS_EXEC_PATH_OPT);
-			putenv(path_env);
-			doSystem("%s >/tmp/syscmd.log 2>&1\n", SystemCmd);
+			run_syscmd_console(SystemCmd);
 			SystemCmd[0] = '\0';
 		} else {
 			write_syscmd_log(NULL);
@@ -3212,7 +3230,7 @@ apply_cgi(const char *url, webs_t wp)
 		char *cmd_str = websGetVar(wp, "SystemCmd", "");
 
 		if (nvram_match("debug_cmd_enable", "1")) {
-			cmd_len = MIN(sizeof(SystemCmd)-1, strlen(cmd_str));
+			cmd_len = MIN(sizeof(SystemCmd)-1, strcspn(cmd_str, "\r\n"));
 			strncpy(SystemCmd, cmd_str, cmd_len);
 			SystemCmd[cmd_len] = '\0';
 		} else {
