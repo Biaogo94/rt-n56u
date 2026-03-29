@@ -55,15 +55,36 @@ jobs:
         run: |
           cd trunk
           mkdir -p ${images_dir}
-          for m in $targets; do fakeroot ./build_firmware_ci $m; \
-          if [ $? = 0 ]; then cp -f images/*.trx ${images_dir}/$m.trx; else exit 1; fi; \
-          ./clear_tree_simple >/dev/null 2>&1; done
+          shopt -s nullglob
+          kernel_ver="$(sed -n 's/^FIRMWARE_KERNEL_VER=\"\([^\"]*\)\"/\1/p' Makefile | head -n1)"
+          [ -n "$kernel_ver" ] || kernel_ver="unknown"
+          echo "kernel_ver=${kernel_ver}" >> $GITHUB_ENV
+          collect_image() {
+            local model="$1"
+            local image
+            local dst
+
+            for image in images/*.trx; do
+              dst="${images_dir}/Padavan-${model}-${kernel_ver}.trx"
+              cp -f "$image" "$dst"
+              echo "Collected $image -> $dst"
+            done
+          }
+          for m in $targets; do
+            fakeroot ./build_firmware_ci $m
+            if [ $? = 0 ]; then
+              collect_image "$m"
+            else
+              exit 1
+            fi
+            ./clear_tree_simple >/dev/null 2>&1
+          done
       - name: Create archive
         if: ${{ github.event_name != 'release' && success() }}
         run: |
           ls -lh ${images_dir}
           GIT_VERSION=`git rev-parse --short=7 HEAD 2>/dev/null` && [ -n "$GIT_VERSION" ] && \
-          image_name=images_${build_variant}_${GIT_VERSION} || image_name=images_${build_variant}
+          image_name=Padavan-${build_variant}-${kernel_ver}-${GIT_VERSION} || image_name=Padavan-${build_variant}-${kernel_ver}
           cd ${images_dir}; md5sum *.trx |tee md5sum.txt; 7z a -mx=9 ${image_name}.7z ./*
           echo "image_name=${image_name}" >> $GITHUB_ENV
       - name: Upload images to Artifact

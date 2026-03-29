@@ -123,6 +123,23 @@ jobs:
         run: |
           cd trunk
           mkdir -p ${{ env.IMAGES_DIR }}
+          shopt -s nullglob
+
+          kernel_ver="$(sed -n 's/^FIRMWARE_KERNEL_VER=\"\([^\"]*\)\"/\1/p' Makefile | head -n1)"
+          [ -n "$kernel_ver" ] || kernel_ver="unknown"
+          git_version="$(git rev-parse --short=7 HEAD 2>/dev/null || echo unknown)"
+
+          collect_image() {
+            local model="$1"
+            local image
+            local dst
+
+            for image in images/*.trx; do
+              dst="${{ env.IMAGES_DIR }}/Padavan-${model}-${kernel_ver}.trx"
+              cp -f "$image" "$dst"
+              echo "Collected $image -> $dst"
+            done
+          }
 
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.build_mode }}" = "single-target" ]; then
             # Single target build
@@ -130,7 +147,8 @@ jobs:
             echo "Building single target: $target"
             fakeroot ./build_firmware_modify $target
             if [ $? -eq 0 ]; then
-              cp -f images/*.trx ${{ env.IMAGES_DIR }}/
+              collect_image "$target"
+              echo "artifact_name=Padavan-${target}-${kernel_ver}" >> $GITHUB_ENV
             fi
           else
             # Multi-target build based on variant
@@ -158,12 +176,13 @@ jobs:
               echo "=== Building $m ==="
               fakeroot ./build_firmware_ci $m
               if [ $? -eq 0 ]; then
-                cp -f images/*.trx ${{ env.IMAGES_DIR }}/$m.trx
+                collect_image "$m"
               else
                 echo "Build failed for $m"
               fi
               ./clear_tree_simple >/dev/null 2>&1 || true
             done
+            echo "artifact_name=Padavan-${variant}-${kernel_ver}-${git_version}" >> $GITHUB_ENV
           fi
 
       - name: List built images
@@ -172,18 +191,12 @@ jobs:
           echo "=== Image sizes ==="
           du -h ${{ env.IMAGES_DIR }}/*.trx 2>/dev/null || true
 
-      - name: Create archive
+      - name: Generate checksums
         if: success()
         run: |
           if ls ${{ env.IMAGES_DIR }}/*.trx 1> /dev/null 2>&1; then
-            GIT_VERSION=$(git rev-parse --short=7 HEAD 2>/dev/null || echo "unknown")
-            IMAGE_NAME="padavan-firmware-${GIT_VERSION}"
             cd ${{ env.IMAGES_DIR }}
             md5sum *.trx | tee md5sum.txt
-            7z a -mx=9 /tmp/${IMAGE_NAME}.7z ./*
-            echo "image_name=${IMAGE_NAME}" >> $GITHUB_ENV
-            echo "Archive created: /tmp/${IMAGE_NAME}.7z"
-            ls -lh /tmp/${IMAGE_NAME}.7z
           else
             echo "No firmware images to archive"
           fi
@@ -192,16 +205,8 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.image_name || 'firmware' }}
+          name: ${{ env.artifact_name || 'firmware' }}
           path: |
             ${{ env.IMAGES_DIR }}/*.trx
             ${{ env.IMAGES_DIR }}/md5sum.txt
-          retention-days: 30
-
-      - name: Upload archive artifact
-        if: success() && env.image_name != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.image_name }}-archive
-          path: /tmp/${{ env.image_name }}.7z
           retention-days: 30
