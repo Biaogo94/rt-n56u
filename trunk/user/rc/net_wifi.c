@@ -35,7 +35,7 @@ static int
 wif_control(const char *wifname, int is_up)
 {
 	logmessage(LOGNAME, "%s: ifname: %s, isup: %d", __func__, wifname, is_up);
-	return doSystem("ifconfig %s %s 2>/dev/null", wifname, (is_up) ? "up" : "down");
+	return eval("ifconfig", wifname, (is_up) ? "up" : "down");
 }
 
 void
@@ -1124,28 +1124,26 @@ ebtables_filter_guest_ap(const char *wifname, int is_aband, int i_need_dhcp)
 {
 	if (i_need_dhcp) {
 		/* drop all IPv4 traffic to router host (exclude DHCPv4)  */
-		doSystem("ebtables -A %s -i %s -p IPv4 --ip-protocol ! %s -j %s",
-				"INPUT", wifname, "udp", "DROP");
-		doSystem("ebtables -A %s -i %s -p IPv4 --ip-protocol %s --ip-destination-port ! %d -j %s",
-				"INPUT", wifname, "udp", 67, "DROP");
+		eval("ebtables", "-A", "INPUT", "-i", wifname, "-p", "IPv4", "--ip-protocol", "!", "udp", "-j", "DROP");
+		eval("ebtables", "-A", "INPUT", "-i", wifname, "-p", "IPv4", "--ip-protocol", "udp",
+			"--ip-destination-port", "!", "67", "-j", "DROP");
 	} else {
 		/* drop all traffic to router host  */
-		doSystem("ebtables -A %s -i %s -j %s",
-				"INPUT", wifname, "DROP");
+		eval("ebtables", "-A", "INPUT", "-i", wifname, "-j", "DROP");
 	}
 
 	/* drop forwards between 2.4/5Ghz AP wifs */
 #if BOARD_HAS_5G_RADIO
 	if (is_aband) {
 #if defined(USE_RT3352_MII)
-		doSystem("ebtables -A %s -i %s -o %s -j %s", "FORWARD", wifname, IFNAME_INIC_GUEST_VLAN, "DROP");
+		eval("ebtables", "-A", "FORWARD", "-i", wifname, "-o", IFNAME_INIC_GUEST_VLAN, "-j", "DROP");
 #else
-		doSystem("ebtables -A %s -i %s -o %s -j %s", "FORWARD", wifname, IFNAME_2G_MAIN, "DROP");
-		doSystem("ebtables -A %s -i %s -o %s -j %s", "FORWARD", wifname, IFNAME_2G_GUEST, "DROP");
+		eval("ebtables", "-A", "FORWARD", "-i", wifname, "-o", IFNAME_2G_MAIN, "-j", "DROP");
+		eval("ebtables", "-A", "FORWARD", "-i", wifname, "-o", IFNAME_2G_GUEST, "-j", "DROP");
 #endif
 	} else {
-		doSystem("ebtables -A %s -i %s -o %s -j %s", "FORWARD", wifname, IFNAME_5G_MAIN, "DROP");
-		doSystem("ebtables -A %s -i %s -o %s -j %s", "FORWARD", wifname, IFNAME_5G_GUEST, "DROP");
+		eval("ebtables", "-A", "FORWARD", "-i", wifname, "-o", IFNAME_5G_MAIN, "-j", "DROP");
+		eval("ebtables", "-A", "FORWARD", "-i", wifname, "-o", IFNAME_5G_GUEST, "-j", "DROP");
 	}
 #endif
 }
@@ -1197,8 +1195,8 @@ restart_guest_lan_isolation(void)
 		int i_need_dhcp = is_dhcpd_enabled(1);
 		
 		module_smart_load("ebtable_filter", NULL);
-		doSystem("ebtables %s", "-F");
-		doSystem("ebtables %s", "-X");
+		eval("ebtables", "-F");
+		eval("ebtables", "-X");
 #if BOARD_HAS_5G_RADIO
 		if (is_need_ebtables & 0x10)
 			ebtables_filter_guest_ap(wl_ifname_guest, 1, i_need_dhcp);
@@ -1207,8 +1205,8 @@ restart_guest_lan_isolation(void)
 			ebtables_filter_guest_ap(rt_ifname_guest, 0, i_need_dhcp);
 	}
 	else if (is_module_loaded("ebtables")) {
-		doSystem("ebtables %s", "-F");
-		doSystem("ebtables %s", "-X");
+		eval("ebtables", "-F");
+		eval("ebtables", "-X");
 		
 		module_smart_unload("ebt_ip", 0);
 		module_smart_unload("ebtable_filter", 0);

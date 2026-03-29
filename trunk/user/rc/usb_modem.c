@@ -334,22 +334,23 @@ static int
 qmi_control_network(const char* control_node, int is_start)
 {
 	int qmi_client_id = -1;
+	char control_path[32];
+
+	snprintf(control_path, sizeof(control_path), "/dev/%s", control_node);
 
 	if (is_start) {
-		int i;
-		char *qmi_nets, *pin_code, *usr_name, *usr_pass;
-		char clid_cmd[32], auth_cmd[128];
+		int i, argc;
+		char *qmi_nets, *pin_code, *usr_name, *usr_pass, *apn;
+		char qmi_client_arg[32];
+		char *uqmi_argv[18];
 		
 		/* enter PIN-code */
 		pin_code = nvram_safe_get("modem_pin");
-		if (strlen(pin_code) > 0) {
-			doSystem("%s -d /dev/%s %s %s",
-				"/bin/uqmi", control_node, "--verify-pin1", pin_code);
-		}
+		if (strlen(pin_code) > 0)
+			eval("/bin/uqmi", "-d", control_path, "--verify-pin1", pin_code);
 		
 		/* set interface format as 802.3 */
-		doSystem("%s -d /dev/%s %s %s",
-			"/bin/uqmi", control_node, "--set-data-format", "802.3");
+		eval("/bin/uqmi", "-d", control_path, "--set-data-format", "802.3");
 		
 		/* setup network modes */
 		qmi_nets = "all";
@@ -383,29 +384,42 @@ qmi_control_network(const char* control_node, int is_start)
 			qmi_nets = "lte";
 			break;
 		}
-		doSystem("%s -d /dev/%s %s %s",
-			"/bin/uqmi", control_node, "--set-network-modes", qmi_nets);
+		eval("/bin/uqmi", "-d", control_path, "--set-network-modes", qmi_nets);
 		
 		/* obtain new client id */
-		doSystem("%s -d /dev/%s %s %s",
-			"/bin/uqmi", control_node, "--get-client-id", "wds");
+		eval("/bin/uqmi", "-d", control_path, "--get-client-id", "wds");
 		qmi_client_id = get_qmi_handle(QMI_CLIENT_ID);
-		
-		clid_cmd[0] = 0;
-		if (qmi_client_id >= 0)
-			snprintf(clid_cmd, sizeof(clid_cmd), " --set-client-id wds,%d", qmi_client_id);
 		
 		usr_name = nvram_safe_get("modem_user");
 		usr_pass = nvram_safe_get("modem_pass");
-		
-		auth_cmd[0] = 0;
-		if (strlen(usr_name) > 0 && strlen(usr_pass) > 0)
-			snprintf(auth_cmd, sizeof(auth_cmd), " --auth-type both --username \"%s\" --password \"%s\"", usr_name, usr_pass);
+		apn = nvram_safe_get("modem_apn");
 		
 		unlink(QMI_HANDLE_PDH);
 		for (i = 0; i < MAX_QMI_TRIES; i++) {
-			doSystem("%s -d /dev/%s%s --keep-client-id wds --start-network \"%s\"%s --autoconnect",
-					"/bin/uqmi", control_node, clid_cmd, nvram_safe_get("modem_apn"), auth_cmd);
+			argc = 0;
+			uqmi_argv[argc++] = "/bin/uqmi";
+			uqmi_argv[argc++] = "-d";
+			uqmi_argv[argc++] = control_path;
+			if (qmi_client_id >= 0) {
+				snprintf(qmi_client_arg, sizeof(qmi_client_arg), "wds,%d", qmi_client_id);
+				uqmi_argv[argc++] = "--set-client-id";
+				uqmi_argv[argc++] = qmi_client_arg;
+			}
+			uqmi_argv[argc++] = "--keep-client-id";
+			uqmi_argv[argc++] = "wds";
+			uqmi_argv[argc++] = "--start-network";
+			uqmi_argv[argc++] = apn;
+			if (strlen(usr_name) > 0 && strlen(usr_pass) > 0) {
+				uqmi_argv[argc++] = "--auth-type";
+				uqmi_argv[argc++] = "both";
+				uqmi_argv[argc++] = "--username";
+				uqmi_argv[argc++] = usr_name;
+				uqmi_argv[argc++] = "--password";
+				uqmi_argv[argc++] = usr_pass;
+			}
+			uqmi_argv[argc++] = "--autoconnect";
+			uqmi_argv[argc] = NULL;
+			_eval(uqmi_argv, NULL, 0, NULL);
 			
 			if (check_if_file_exist(QMI_HANDLE_PDH))
 				return 0;
@@ -416,14 +430,15 @@ qmi_control_network(const char* control_node, int is_start)
 //		int qmi_pdh = get_qmi_handle(QMI_HANDLE_PDH);
 		
 		/* stop network and disable autoconnect (use global pdh with autoconnect) */
-		doSystem("%s -d /dev/%s --stop-network 0x%x --autoconnect",
-			"/bin/uqmi", control_node, 0xffffffff);
+		eval("/bin/uqmi", "-d", control_path, "--stop-network", "0xffffffff", "--autoconnect");
 		
 		/* release client id */
 		qmi_client_id = get_qmi_handle(QMI_CLIENT_ID);
 		if (qmi_client_id >= 0) {
-			doSystem("%s -d /dev/%s --set-client-id wds,%d --release-client-id wds",
-				"/bin/uqmi", control_node, qmi_client_id);
+			char qmi_client_arg[32];
+
+			snprintf(qmi_client_arg, sizeof(qmi_client_arg), "wds,%d", qmi_client_id);
+			eval("/bin/uqmi", "-d", control_path, "--set-client-id", qmi_client_arg, "--release-client-id", "wds");
 		}
 		
 		unlink(QMI_CLIENT_ID);

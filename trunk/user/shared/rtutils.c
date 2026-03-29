@@ -323,13 +323,21 @@ calc_mcast_tx_mode(int i_val, int is_aband, int *p_mmcs)
 int
 iwpriv_set_int(const char *ifname, const char *param, int value)
 {
-	return doSystem("iwpriv %s set %s=%d", ifname, param, value);
+	char param_value[96];
+
+	snprintf(param_value, sizeof(param_value), "%s=%d", param, value);
+
+	return eval("iwpriv", ifname, "set", param_value);
 }
 
 int
 iwpriv_set_str(const char *ifname, const char *param, const char *value)
 {
-	return doSystem("iwpriv %s set %s=%s", ifname, param, value);
+	char param_value[128];
+
+	snprintf(param_value, sizeof(param_value), "%s=%s", param, value);
+
+	return eval("iwpriv", ifname, "set", param_value);
 }
 
 int
