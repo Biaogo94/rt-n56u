@@ -5,6 +5,7 @@ import json
 import re
 import sys
 from pathlib import Path
+from typing import Optional
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -132,6 +133,64 @@ def build_catalog() -> dict:
     }
 
 
+def load_catalog_targets(catalog_path: Path) -> dict:
+    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+    return {item["target"]: item for item in catalog["targets"]}
+
+
+def get_target_from_image_name(image_path: Path, kernel_version: str) -> Optional[str]:
+    prefix = "Padavan-"
+    suffix = f"-{kernel_version}"
+    stem = image_path.stem
+
+    if not stem.startswith(prefix):
+        return None
+    if not stem.endswith(suffix):
+        return None
+
+    target = stem[len(prefix):-len(suffix)]
+    return target or None
+
+
+def write_manifest(
+    catalog_path: Path,
+    images_dir: Path,
+    build_mode: str,
+    build_variant: str,
+    kernel_version: str,
+    git_revision: str,
+) -> None:
+    targets = load_catalog_targets(catalog_path)
+    images = []
+
+    for image_path in sorted(images_dir.glob("Padavan-*.trx")):
+        target = get_target_from_image_name(image_path, kernel_version)
+        if not target:
+            continue
+        if target not in targets:
+            raise ValueError(f"Unknown firmware target in image name: {image_path.name}")
+
+        meta = dict(targets[target])
+        meta["filename"] = image_path.name
+        meta["kernel_version"] = kernel_version
+        meta["git_revision"] = git_revision
+        meta["size_bytes"] = image_path.stat().st_size
+        images.append(meta)
+
+    manifest = {
+        "build_mode": build_mode,
+        "build_variant": build_variant,
+        "kernel_version": kernel_version,
+        "git_revision": git_revision,
+        "images": images,
+    }
+
+    (images_dir / "manifest.json").write_text(
+        json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+
+
 def yaml_list(items, indent: int) -> str:
     prefix = " " * indent
     return "\n".join(f"{prefix}- {item}" for item in items)
@@ -232,6 +291,7 @@ jobs:
           toolchain-mipsel/toolchain-3.4.x/bin/mipsel-linux-uclibc-gcc --version || true
 
       - name: Build firmware
+        id: build
         shell: bash
         run: |
           set -euo pipefail
@@ -245,8 +305,17 @@ jobs:
           [ -n "$kernel_ver" ] || kernel_ver="unknown"
           git_version="$(git rev-parse --short=7 HEAD 2>/dev/null || echo unknown)"
 
-          echo "KERNEL_VER=$kernel_ver" >> "$GITHUB_ENV"
-          echo "GIT_VERSION=$git_version" >> "$GITHUB_ENV"
+          set_output() {{
+            local key="$1"
+            local value="$2"
+            echo "${{key}}=${{value}}" >> "$GITHUB_ENV"
+            echo "${{key}}=${{value}}" >> "$GITHUB_OUTPUT"
+          }}
+
+          set_output "KERNEL_VER" "$kernel_ver"
+          set_output "GIT_VERSION" "$git_version"
+          set_output "kernel_ver" "$kernel_ver"
+          set_output "git_version" "$git_version"
 
           collect_image() {{
             local model="$1"
@@ -265,9 +334,11 @@ jobs:
             echo "Building single target: $target"
             fakeroot ./build_firmware_modify "$target"
             collect_image "$target"
-            echo "BUILD_MODE=single-target" >> "$GITHUB_ENV"
-            echo "BUILD_VARIANT=" >> "$GITHUB_ENV"
-            echo "artifact_name=Padavan-${{target}}-${{kernel_ver}}" >> "$GITHUB_ENV"
+            set_output "BUILD_MODE" "single-target"
+            set_output "BUILD_VARIANT" ""
+            set_output "build_mode" "single-target"
+            set_output "build_variant" ""
+            set_output "artifact_name" "Padavan-${{target}}-${{kernel_ver}}"
           else
             variant="${{{{ github.event.inputs.variant || 'mt7621' }}}}"
             targets="$(python3 "$catalog_script" list-group "$variant")"
@@ -284,9 +355,11 @@ jobs:
               ./clear_tree_simple >/dev/null 2>&1 || true
             done
 
-            echo "BUILD_MODE=variant-batch" >> "$GITHUB_ENV"
-            echo "BUILD_VARIANT=${{variant}}" >> "$GITHUB_ENV"
-            echo "artifact_name=Padavan-${{variant}}-${{kernel_ver}}-${{git_version}}" >> "$GITHUB_ENV"
+            set_output "BUILD_MODE" "variant-batch"
+            set_output "BUILD_VARIANT" "${{variant}}"
+            set_output "build_mode" "variant-batch"
+            set_output "build_variant" "${{variant}}"
+            set_output "artifact_name" "Padavan-${{variant}}-${{kernel_ver}}-${{git_version}}"
           fi
 
       - name: List built images
@@ -298,10 +371,10 @@ jobs:
       - name: Generate checksums and manifest
         if: success()
         env:
-          BUILD_MODE: ${{{{ env.BUILD_MODE }}}}
-          BUILD_VARIANT: ${{{{ env.BUILD_VARIANT }}}}
-          GIT_VERSION: ${{{{ env.GIT_VERSION }}}}
-          KERNEL_VER: ${{{{ env.KERNEL_VER }}}}
+          BUILD_MODE: ${{{{ steps.build.outputs.build_mode }}}}
+          BUILD_VARIANT: ${{{{ steps.build.outputs.build_variant }}}}
+          GIT_VERSION: ${{{{ steps.build.outputs.git_version }}}}
+          KERNEL_VER: ${{{{ steps.build.outputs.kernel_ver }}}}
         run: |
           set -euo pipefail
 
@@ -309,42 +382,12 @@ jobs:
             cd "${{{{ env.IMAGES_DIR }}}}"
             md5sum *.trx | tee md5sum.txt
 
-            python3 - "${{{{ github.workspace }}}}/.github/firmware-targets.json" "${{{{ env.IMAGES_DIR }}}}" <<'PY'
-            import json
-            import os
-            import sys
-            from pathlib import Path
-
-            catalog_path = Path(sys.argv[1])
-            images_dir = Path(sys.argv[2])
-            catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
-            targets = {{item["target"]: item for item in catalog["targets"]}}
-
-            images = []
-            for image_path in sorted(images_dir.glob("Padavan-*.trx")):
-                parts = image_path.stem.split("-")
-                if len(parts) < 3 or parts[0] != "Padavan":
-                    continue
-                target = "-".join(parts[1:-1])
-                meta = dict(targets[target])
-                meta["filename"] = image_path.name
-                meta["kernel_version"] = os.environ["KERNEL_VER"]
-                meta["git_revision"] = os.environ["GIT_VERSION"]
-                images.append(meta)
-
-            manifest = {{
-                "build_mode": os.environ["BUILD_MODE"],
-                "build_variant": os.environ["BUILD_VARIANT"],
-                "kernel_version": os.environ["KERNEL_VER"],
-                "git_revision": os.environ["GIT_VERSION"],
-                "images": images,
-            }}
-
-            (images_dir / "manifest.json").write_text(
-                json.dumps(manifest, indent=2, ensure_ascii=False) + "\\n",
-                encoding="utf-8",
-            )
-            PY
+            python3 "${{{{ github.workspace }}}}/.github/scripts/firmware_targets.py" write-manifest \\
+              --images-dir "${{{{ env.IMAGES_DIR }}}}" \\
+              --build-mode "${{{{ env.BUILD_MODE }}}}" \\
+              --build-variant "${{{{ env.BUILD_VARIANT }}}}" \\
+              --kernel-version "${{{{ env.KERNEL_VER }}}}" \\
+              --git-revision "${{{{ env.GIT_VERSION }}}}"
           else
             echo "No firmware images to archive"
           fi
@@ -353,7 +396,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: ${{{{ env.artifact_name || 'firmware' }}}}
+          name: ${{{{ steps.build.outputs.artifact_name || 'firmware' }}}}
           path: |
             ${{{{ env.IMAGES_DIR }}}}/*.trx
             ${{{{ env.IMAGES_DIR }}}}/md5sum.txt
@@ -379,6 +422,18 @@ def command_dump_catalog(args: argparse.Namespace) -> int:
 def command_list_group(args: argparse.Namespace) -> int:
     catalog = build_catalog()
     sys.stdout.write(" ".join(catalog["groups"].get(args.group, [])))
+    return 0
+
+
+def command_write_manifest(args: argparse.Namespace) -> int:
+    write_manifest(
+        catalog_path=Path(args.catalog),
+        images_dir=Path(args.images_dir),
+        build_mode=args.build_mode,
+        build_variant=args.build_variant,
+        kernel_version=args.kernel_version,
+        git_revision=args.git_revision,
+    )
     return 0
 
 
@@ -425,6 +480,15 @@ def build_parser() -> argparse.ArgumentParser:
     list_group = subparsers.add_parser("list-group", help="Print targets for a CI group as a space-separated list.")
     list_group.add_argument("group", choices=VARIANT_ORDER)
     list_group.set_defaults(func=command_list_group)
+
+    write_manifest_parser = subparsers.add_parser("write-manifest", help="Write manifest.json for built firmware images.")
+    write_manifest_parser.add_argument("--images-dir", required=True, help="Directory containing Padavan-*.trx images.")
+    write_manifest_parser.add_argument("--build-mode", required=True, help="Build mode stored in the manifest.")
+    write_manifest_parser.add_argument("--build-variant", default="", help="Build variant stored in the manifest.")
+    write_manifest_parser.add_argument("--kernel-version", required=True, help="Kernel version suffix embedded in image names.")
+    write_manifest_parser.add_argument("--git-revision", required=True, help="Git revision stored in the manifest.")
+    write_manifest_parser.add_argument("--catalog", default=str(CATALOG_PATH), help="Path to the firmware target catalog JSON.")
+    write_manifest_parser.set_defaults(func=command_write_manifest)
 
     render_workflow = subparsers.add_parser("render-build-workflow", help="Render the Build Firmware workflow.")
     render_workflow.add_argument("--output", help="Write workflow YAML to this path.")
