@@ -310,41 +310,41 @@ jobs:
             md5sum *.trx | tee md5sum.txt
 
             python3 - "${{{{ github.workspace }}}}/.github/firmware-targets.json" "${{{{ env.IMAGES_DIR }}}}" <<'PY'
-import json
-import os
-import sys
-from pathlib import Path
+            import json
+            import os
+            import sys
+            from pathlib import Path
 
-catalog_path = Path(sys.argv[1])
-images_dir = Path(sys.argv[2])
-catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
-targets = {{item["target"]: item for item in catalog["targets"]}}
+            catalog_path = Path(sys.argv[1])
+            images_dir = Path(sys.argv[2])
+            catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+            targets = {{item["target"]: item for item in catalog["targets"]}}
 
-images = []
-for image_path in sorted(images_dir.glob("Padavan-*.trx")):
-    parts = image_path.stem.split("-")
-    if len(parts) < 3 or parts[0] != "Padavan":
-        continue
-    target = "-".join(parts[1:-1])
-    meta = dict(targets[target])
-    meta["filename"] = image_path.name
-    meta["kernel_version"] = os.environ["KERNEL_VER"]
-    meta["git_revision"] = os.environ["GIT_VERSION"]
-    images.append(meta)
+            images = []
+            for image_path in sorted(images_dir.glob("Padavan-*.trx")):
+                parts = image_path.stem.split("-")
+                if len(parts) < 3 or parts[0] != "Padavan":
+                    continue
+                target = "-".join(parts[1:-1])
+                meta = dict(targets[target])
+                meta["filename"] = image_path.name
+                meta["kernel_version"] = os.environ["KERNEL_VER"]
+                meta["git_revision"] = os.environ["GIT_VERSION"]
+                images.append(meta)
 
-manifest = {{
-    "build_mode": os.environ["BUILD_MODE"],
-    "build_variant": os.environ["BUILD_VARIANT"],
-    "kernel_version": os.environ["KERNEL_VER"],
-    "git_revision": os.environ["GIT_VERSION"],
-    "images": images,
-}}
+            manifest = {{
+                "build_mode": os.environ["BUILD_MODE"],
+                "build_variant": os.environ["BUILD_VARIANT"],
+                "kernel_version": os.environ["KERNEL_VER"],
+                "git_revision": os.environ["GIT_VERSION"],
+                "images": images,
+            }}
 
-(images_dir / "manifest.json").write_text(
-    json.dumps(manifest, indent=2, ensure_ascii=False) + "\\n",
-    encoding="utf-8",
-)
-PY
+            (images_dir / "manifest.json").write_text(
+                json.dumps(manifest, indent=2, ensure_ascii=False) + "\\n",
+                encoding="utf-8",
+            )
+            PY
           else
             echo "No firmware images to archive"
           fi
