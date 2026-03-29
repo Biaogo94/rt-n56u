@@ -208,6 +208,8 @@ void start_sit_tunnel(int ipv6_type, char *wan_ifname, char *wan_addr4, char *wa
 	int sit_ttl, sit_mtu, size4, size6;
 	char *sit_remote, *sit_relay, *sit_ep, *wan_gate6;
 	char addr6s[INET6_ADDRSTRLEN];
+	char sit_ttl_str[16];
+	char sit_mtu_str[16];
 	struct in_addr addr4;
 	struct in6_addr addr6;
 
@@ -236,9 +238,10 @@ void start_sit_tunnel(int ipv6_type, char *wan_ifname, char *wan_addr4, char *wa
 	}
 
 	if (is_interface_exist(IFNAME_SIT))
-		doSystem("ip tunnel del %s", IFNAME_SIT);
+		eval("ip", "tunnel", "del", IFNAME_SIT);
 
-	doSystem("ip tunnel %s %s mode sit remote %s local %s ttl %d", "add", IFNAME_SIT, sit_remote, wan_addr4, sit_ttl);
+	snprintf(sit_ttl_str, sizeof(sit_ttl_str), "%d", sit_ttl);
+	eval("ip", "tunnel", "add", IFNAME_SIT, "mode", "sit", "remote", sit_remote, "local", wan_addr4, "ttl", sit_ttl_str);
 
 	if (ipv6_type == IPV6_6TO4) {
 		size6 = 16;
@@ -267,7 +270,7 @@ void start_sit_tunnel(int ipv6_type, char *wan_ifname, char *wan_addr4, char *wa
 			sprintf(sit_6rd_relay_prefix, "%s/%d", inet_ntoa(net4), size4);
 		}
 		
-		doSystem("ip tunnel 6rd dev %s 6rd-prefix %s 6rd-relay_prefix %s", IFNAME_SIT, sit_6rd_prefix, sit_6rd_relay_prefix);
+		eval("ip", "tunnel", "6rd", "dev", IFNAME_SIT, "6rd-prefix", sit_6rd_prefix, "6rd-relay_prefix", sit_6rd_relay_prefix);
 		
 		ipv6_to_ipv4_map(&addr6, size6, &addr4, size4);
 		addr6.s6_addr16[7] = htons(0x0001);
@@ -284,22 +287,23 @@ void start_sit_tunnel(int ipv6_type, char *wan_ifname, char *wan_addr4, char *wa
 		sprintf(addr6s, "%s/%d", addr6s, size6);
 
 	control_if_ipv6_radv(IFNAME_SIT, 0);
-	doSystem("ip link set mtu %d dev %s up", sit_mtu, IFNAME_SIT);
+	snprintf(sit_mtu_str, sizeof(sit_mtu_str), "%d", sit_mtu);
+	eval("ip", "link", "set", "mtu", sit_mtu_str, "dev", IFNAME_SIT, "up");
 	control_if_ipv6(IFNAME_SIT, 1);
 	clear_if_addr6(IFNAME_SIT);
-	doSystem("ip -6 addr add %s dev %s", addr6s, IFNAME_SIT);
+	eval("ip", "-6", "addr", "add", addr6s, "dev", IFNAME_SIT);
 
 	/* WAN IPv6 gateway (auto-generate for 6to4/6rd) */
 	if (ipv6_type == IPV6_6TO4 || ipv6_type == IPV6_6RD) {
 		sprintf(addr6s, "::%s", sit_relay);
 		wan_gate6 = addr6s;
 		/* add direct default gateway for workaround "No route to host" on new kernel */
-		doSystem("ip -6 route add default dev %s metric %d", IFNAME_SIT, 2048);
+		eval("ip", "-6", "route", "add", "default", "dev", IFNAME_SIT, "metric", "2048");
 	} else {
 		wan_gate6 = get_wan_unit_value(0, "gate6");
 	}
 	if (*wan_gate6)
-		doSystem("ip -6 route add default via %s dev %s metric %d", wan_gate6, IFNAME_SIT, 1);
+		eval("ip", "-6", "route", "add", "default", "via", wan_gate6, "dev", IFNAME_SIT, "metric", "1");
 
 	/* LAN IPv6 address (auto-generate for 6to4/6rd) */
 	if (ipv6_type == IPV6_6TO4 || ipv6_type == IPV6_6RD) {
@@ -319,7 +323,7 @@ void start_sit_tunnel(int ipv6_type, char *wan_ifname, char *wan_addr4, char *wa
 		sprintf(addr6s, "%s/%d", addr6s, 64);
 		
 		clear_if_addr6(IFNAME_BR);
-		doSystem("ip -6 addr add %s dev %s", addr6s, IFNAME_BR);
+		eval("ip", "-6", "addr", "add", addr6s, "dev", IFNAME_BR);
 		
 		store_lan_addr6(addr6s);
 	}
@@ -330,7 +334,7 @@ void start_sit_tunnel(int ipv6_type, char *wan_ifname, char *wan_addr4, char *wa
 void stop_sit_tunnel(void)
 {
 	if (is_interface_exist(IFNAME_SIT))
-		doSystem("ip tunnel del %s", IFNAME_SIT);
+		eval("ip", "tunnel", "del", IFNAME_SIT);
 }
 
 void wan6_up(char *wan_ifname, int unit)
@@ -369,13 +373,13 @@ void wan6_up(char *wan_ifname, int unit)
 			control_if_ipv6_radv(wan_ifname, 0);
 			clear_if_addr6(wan_ifname);
 			if (*wan_addr6)
-				doSystem("ip -6 addr add %s dev %s", wan_addr6, wan_ifname);
+				eval("ip", "-6", "addr", "add", wan_addr6, "dev", wan_ifname);
 			if (*wan_gate6) {
-				doSystem("ip -6 route add %s dev %s", wan_gate6, wan_ifname);
-				doSystem("ip -6 route add default via %s metric %d", wan_gate6, 1);
+				eval("ip", "-6", "route", "add", wan_gate6, "dev", wan_ifname);
+				eval("ip", "-6", "route", "add", "default", "via", wan_gate6, "metric", "1");
 			}
 		} else {
-			doSystem("ip -6 route add default dev %s metric %d", wan_ifname, 2048);
+			eval("ip", "-6", "route", "add", "default", "dev", wan_ifname, "metric", "2048");
 			allow_ra = nvram_invmatch("ip6_wan_dhcp", "1");
 			control_if_ipv6_privacy(wan_ifname, allow_ra && nvram_match("ip6_wan_priv", "1"));
 			control_if_ipv6_autoconf(wan_ifname, allow_ra);
@@ -404,7 +408,7 @@ void wan6_down(char *wan_ifname, int unit)
 	{
 		wan6_ifname = IFNAME_SIT;
 		if (is_interface_exist(IFNAME_SIT))
-			doSystem("ip link set dev %s down", IFNAME_SIT);
+			eval("ip", "link", "set", "dev", IFNAME_SIT, "down");
 	}
 	else
 	{

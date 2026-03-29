@@ -112,24 +112,24 @@ void control_if_ipv6_privacy(const char *ifname, int enable)
 void clear_if_addr6(char *ifname)
 {
 	if (is_interface_exist(ifname))
-		doSystem("ip -6 addr flush dev %s scope global", ifname);
+		eval("ip", "-6", "addr", "flush", "dev", ifname, "scope", "global");
 }
 
 void clear_if_route6(char *ifname)
 {
 	if (is_interface_exist(ifname))
-		doSystem("ip -6 route flush dev %s", ifname);
+		eval("ip", "-6", "route", "flush", "dev", ifname);
 }
 
 void clear_if_neigh6(char *ifname)
 {
 	if (is_interface_exist(ifname))
-		doSystem("ip -6 neigh flush dev %s", ifname);
+		eval("ip", "-6", "neigh", "flush", "dev", ifname);
 }
 
 void clear_all_addr6(void)
 {
-	doSystem("ip -6 addr flush scope global");
+	eval("ip", "-6", "addr", "flush", "scope", "global");
 }
 
 void clear_all_route6(void)
