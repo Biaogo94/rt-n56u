@@ -633,7 +633,8 @@ openvpn_tapif_start(const char *ifname, int is_server, int insert_to_bridge)
 
 	if (insert_to_bridge)
 		br_add_del_if(IFNAME_BR, ifname, 1);
-	doSystem("ifconfig %s %s %s", ifname, "0.0.0.0", "promisc up");
+	ifconfig(ifname, IFUP, "0.0.0.0", NULL);
+	eval("ifconfig", ifname, "promisc");
 	set_vpn_balancing(ifname, is_server);
 }
 

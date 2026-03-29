@@ -744,7 +744,8 @@ launch_wan_usbnet(int unit)
 		set_wan_unit_value(unit, "ifname_t", ndis_ifname);
 		
 		/* bring up NDIS interface */
-		doSystem("ifconfig %s mtu %d up %s", ndis_ifname, ndis_mtu, "0.0.0.0");
+		set_interface_mtu(ndis_ifname, ndis_mtu);
+		ifconfig(ndis_ifname, IFUP, "0.0.0.0", NULL);
 		
 		/* re-build iptables rules (first stage w/o WAN IP) */
 		start_firewall_ex();

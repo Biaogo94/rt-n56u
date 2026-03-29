@@ -797,7 +797,7 @@ wait_ppp_up(char *ppp_ifname, int unit)
 
 	/* Stimulate link up */
 	if (is_valid_ipv4(ppp_gate))
-		doSystem("ping -c1 %s", ppp_gate);
+		eval("ping", "-c1", ppp_gate);
 
 	return 1;
 }
@@ -877,7 +877,8 @@ start_wan(void)
 			continue;
 		
 		/* bring up physical WAN interface */
-		doSystem("ifconfig %s mtu %d up %s", wan_ifname, 1500, "0.0.0.0");
+		set_interface_mtu(wan_ifname, 1500);
+		ifconfig(wan_ifname, IFUP, "0.0.0.0", NULL);
 		
 		/* perform ApCli reconnect */
 		reconnect_apcli(wan_ifname, 0);

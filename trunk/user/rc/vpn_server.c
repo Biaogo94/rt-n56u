@@ -417,7 +417,7 @@ ipup_vpns_main(int argc, char **argv)
 	i_vuse = nvram_get_int("vpns_vuse");
 	if (i_vuse) {
 		/* disable multicast flag */
-		doSystem("ifconfig %s %s", argv[1], "-multicast");
+		eval("ifconfig", argv[1], "-multicast");
 	}
 
 	/* add route to client's LAN */
