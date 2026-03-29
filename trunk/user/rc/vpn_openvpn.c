@@ -897,7 +897,7 @@ start_openvpn_client(void)
 	snprintf(vpnc_cfg, sizeof(vpnc_cfg), "%s/%s", CLIENT_ROOT_DIR, client_conf);
 	snprintf(vpnc_scr, sizeof(vpnc_scr), "%s/%s", CLIENT_ROOT_DIR, SCRIPT_OVPN_CLIENT);
 
-	doSystem("mkdir -p -m %s %s", "755", CLIENT_ROOT_DIR);
+	mkdir_if_none(CLIENT_ROOT_DIR, "755");
 
 	i_mode_tun = (nvram_get_int("vpnc_ov_mode") == 1) ? 1 : 0;
 
@@ -1046,7 +1046,7 @@ ovpn_server_expcli_main(int argc, char **argv)
 	}
 
 	/* Generate client cert and key */
-	doSystem("rm -rf %s", tmp_ovpn_path);
+	remove_path_recursive(tmp_ovpn_path);
 	setenv("CRT_PATH_CLI", tmp_ovpn_path, 1);
 	doSystem("/usr/bin/openvpn-cert.sh %s -n '%s' -b %s -d %d", "client", argv[1], rsa_bits, days_valid);
 	unsetenv("CRT_PATH_CLI");
@@ -1091,7 +1091,7 @@ ovpn_server_expcli_main(int argc, char **argv)
 
 	fp = fopen(tmp_ovpn_conf, "w+");
 	if (!fp) {
-		doSystem("rm -rf %s", tmp_ovpn_path);
+		remove_path_recursive(tmp_ovpn_path);
 		printf("Error: unable to create file %s\n", tmp_ovpn_conf);
 		return 1;
 	}
@@ -1130,7 +1130,7 @@ ovpn_server_expcli_main(int argc, char **argv)
 
 	fclose(fp);
 
-	doSystem("rm -rf %s", tmp_ovpn_path);
+	remove_path_recursive(tmp_ovpn_path);
 
 	doSystem("unix2dos %s", tmp_ovpn_conf);
 	chmod(tmp_ovpn_conf, 0600);

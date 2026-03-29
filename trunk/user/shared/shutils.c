@@ -159,7 +159,7 @@ void time_zone_x_mapping()
 	else
 		nvram_set("time_zone_x", tmpstr);
 
-	doSystem("echo %s > /etc/TZ", nvram_safe_get("time_zone_x"));
+	fput_string("/etc/TZ", nvram_safe_get("time_zone_x"));
 }
 
 void change_passwd_unix(char *user, char *pass)
@@ -629,6 +629,243 @@ compare_text_files(const char* file1, const char* file2)
 	fclose(fp1);
 
 	return ret;
+}
+
+int
+mkdir_path_mode(const char *dirpath, mode_t mode)
+{
+	struct stat st;
+	char path[PATH_MAX];
+	char *sep;
+	size_t path_len;
+
+	if (!dirpath || !*dirpath)
+		return EINVAL;
+
+	path_len = strlen(dirpath);
+	if (path_len >= sizeof(path))
+		return ENAMETOOLONG;
+
+	snprintf(path, sizeof(path), "%s", dirpath);
+	if (path_len > 1 && path[path_len - 1] == '/')
+		path[path_len - 1] = '\0';
+
+	if (stat(path, &st) == 0)
+		return S_ISDIR(st.st_mode) ? 0 : ENOTDIR;
+
+	for (sep = path + 1; *sep; sep++) {
+		if (*sep != '/')
+			continue;
+
+		*sep = '\0';
+		if (*path && stat(path, &st) != 0) {
+			if (mkdir(path, mode) != 0 && errno != EEXIST)
+				return errno;
+		} else if (*path && !S_ISDIR(st.st_mode)) {
+			*sep = '/';
+			return ENOTDIR;
+		}
+		*sep = '/';
+	}
+
+	if (stat(path, &st) == 0)
+		return S_ISDIR(st.st_mode) ? 0 : ENOTDIR;
+
+	if (mkdir(path, mode) != 0 && errno != EEXIST)
+		return errno;
+
+	return 0;
+}
+
+int
+copy_file_to_path(const char *src_path, const char *dst_path)
+{
+	struct stat st;
+	int fd_in, fd_out;
+	ssize_t read_len, write_len;
+	char buffer[4096];
+
+	if (!src_path || !*src_path || !dst_path || !*dst_path)
+		return EINVAL;
+
+	if (stat(src_path, &st) != 0)
+		return errno;
+
+	if (!S_ISREG(st.st_mode))
+		return EINVAL;
+
+	fd_in = open(src_path, O_RDONLY);
+	if (fd_in < 0)
+		return errno;
+
+	fd_out = open(dst_path, O_WRONLY | O_CREAT | O_TRUNC, st.st_mode & 0777);
+	if (fd_out < 0) {
+		read_len = errno;
+		close(fd_in);
+		return read_len;
+	}
+
+	while ((read_len = read(fd_in, buffer, sizeof(buffer))) > 0) {
+		char *ptr = buffer;
+		ssize_t remaining = read_len;
+
+		while (remaining > 0) {
+			write_len = write(fd_out, ptr, remaining);
+			if (write_len < 0) {
+				read_len = errno;
+				close(fd_out);
+				close(fd_in);
+				unlink(dst_path);
+				return read_len;
+			}
+
+			ptr += write_len;
+			remaining -= write_len;
+		}
+	}
+
+	if (read_len < 0) {
+		read_len = errno;
+		close(fd_out);
+		close(fd_in);
+		unlink(dst_path);
+		return read_len;
+	}
+
+	close(fd_out);
+	close(fd_in);
+
+	chmod(dst_path, st.st_mode & 0777);
+	return 0;
+}
+
+int
+move_path_replace(const char *src_path, const char *dst_path)
+{
+	int ret;
+
+	if (!src_path || !*src_path || !dst_path || !*dst_path)
+		return EINVAL;
+
+	if (rename(src_path, dst_path) == 0)
+		return 0;
+
+	ret = errno;
+	if (ret != EXDEV)
+		return ret;
+
+	ret = copy_file_to_path(src_path, dst_path);
+	if (ret != 0)
+		return ret;
+
+	if (unlink(src_path) != 0)
+		return errno;
+
+	return 0;
+}
+
+int
+copy_path_recursive(const char *src_path, const char *dst_path)
+{
+	struct stat st;
+	DIR *src_dir;
+	struct dirent *entry;
+	char src_child[PATH_MAX];
+	char dst_child[PATH_MAX];
+	char link_target[PATH_MAX];
+	ssize_t link_len;
+	int ret;
+
+	if (!src_path || !*src_path || !dst_path || !*dst_path)
+		return EINVAL;
+
+	if (lstat(src_path, &st) != 0)
+		return errno;
+
+	if (S_ISLNK(st.st_mode)) {
+		link_len = readlink(src_path, link_target, sizeof(link_target) - 1);
+		if (link_len < 0)
+			return errno;
+
+		link_target[link_len] = '\0';
+		unlink(dst_path);
+		if (symlink(link_target, dst_path) != 0)
+			return errno;
+		return 0;
+	}
+
+	if (S_ISREG(st.st_mode))
+		return copy_file_to_path(src_path, dst_path);
+
+	if (!S_ISDIR(st.st_mode))
+		return EINVAL;
+
+	ret = mkdir_path_mode(dst_path, st.st_mode & 0777);
+	if (ret != 0)
+		return ret;
+
+	src_dir = opendir(src_path);
+	if (!src_dir)
+		return errno;
+
+	while ((entry = readdir(src_dir)) != NULL) {
+		if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, ".."))
+			continue;
+
+		snprintf(src_child, sizeof(src_child), "%s/%s", src_path, entry->d_name);
+		snprintf(dst_child, sizeof(dst_child), "%s/%s", dst_path, entry->d_name);
+		ret = copy_path_recursive(src_child, dst_child);
+		if (ret != 0) {
+			closedir(src_dir);
+			return ret;
+		}
+	}
+
+	closedir(src_dir);
+	chmod(dst_path, st.st_mode & 0777);
+	return 0;
+}
+
+int
+remove_path_recursive(const char *path)
+{
+	struct stat st;
+	DIR *dir;
+	struct dirent *entry;
+	char child_path[PATH_MAX];
+	int ret;
+
+	if (!path || !*path)
+		return EINVAL;
+
+	if (lstat(path, &st) != 0)
+		return (errno == ENOENT) ? 0 : errno;
+
+	if (!S_ISDIR(st.st_mode) || S_ISLNK(st.st_mode))
+		return (unlink(path) == 0 || errno == ENOENT) ? 0 : errno;
+
+	dir = opendir(path);
+	if (!dir)
+		return errno;
+
+	while ((entry = readdir(dir)) != NULL) {
+		if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, ".."))
+			continue;
+
+		snprintf(child_path, sizeof(child_path), "%s/%s", path, entry->d_name);
+		ret = remove_path_recursive(child_path);
+		if (ret != 0) {
+			closedir(dir);
+			return ret;
+		}
+	}
+
+	closedir(dir);
+
+	if (rmdir(path) != 0 && errno != ENOENT)
+		return errno;
+
+	return 0;
 }
 
 void

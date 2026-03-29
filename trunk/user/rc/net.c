@@ -302,7 +302,7 @@ start_xupnpd(char *wan_ifname)
 		if (!check_if_dir_exist(tmp2)) {
 			snprintf(tmp1, sizeof(tmp1), "%s/%s", dir_src, xdir2[i]);
 			if (get_mtd_size("Storage") > 0x10000)
-				doSystem("cp -rf %s %s", tmp1, tmp2);
+				copy_path_recursive(tmp1, tmp2);
 			else
 				symlink(tmp1, tmp2);
 		}
@@ -316,7 +316,7 @@ start_xupnpd(char *wan_ifname)
 	snprintf(tmp1, sizeof(tmp1), "%s/xupnpd%s.lua", dir_src, "");
 	snprintf(tmp2, sizeof(tmp2), "%s/xupnpd%s.lua", dir_dst, "");
 	if (!check_if_file_exist(tmp2))
-		doSystem("cp -f %s %s", tmp1, tmp2);
+		copy_file_to_path(tmp1, tmp2);
 
 	snprintf(tmp1, sizeof(tmp1), "%s/config/common.lua.tmp", dir_dst);
 	snprintf(tmp2, sizeof(tmp2), "%s/config/common.lua", dir_dst);
@@ -334,7 +334,7 @@ start_xupnpd(char *wan_ifname)
 			fclose(fp2);
 		}
 		fclose(fp1);
-		doSystem("mv -f %s %s", tmp1, tmp2);
+		move_path_replace(tmp1, tmp2);
 	}
 
 	has_daemon = 0;
@@ -368,7 +368,7 @@ start_xupnpd(char *wan_ifname)
 			fclose(fp2);
 		}
 		fclose(fp1);
-		doSystem("mv -f %s %s", tmp1, tmp2);
+		move_path_replace(tmp1, tmp2);
 		
 		if (has_daemon)
 			eval("/usr/bin/xupnpd");

@@ -516,7 +516,7 @@ load_user_config(FILE *fp, const char *dir_name, const char *file_name, const ch
 				continue;
 			
 			line[strlen(line) - 1] = '\n';
-			fprintf(fp, line);
+			fputs(line, fp);
 		}
 		
 		fclose(fp_user);
@@ -851,14 +851,18 @@ check_if_dev_exist(const char *devpath)
 int
 mkdir_if_none(const char *dirpath, const char *mode)
 {
-	DIR *dp;
+	mode_t dir_mode;
+	char *end = NULL;
 
-	dp = opendir(dirpath);
-	if (!dp)
-		return !doSystem("mkdir -p -m %s %s", mode, dirpath);
+	if (!mode || !*mode)
+		dir_mode = 0755;
+	else
+		dir_mode = (mode_t)strtoul(mode, &end, 8);
 
-	closedir(dp);
-	return 0;
+	if (end == mode)
+		dir_mode = 0755;
+
+	return mkdir_path_mode(dirpath, dir_mode);
 }
 
 int

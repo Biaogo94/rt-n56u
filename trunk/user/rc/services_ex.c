@@ -1097,9 +1097,9 @@ start_ddns(int clear_cache)
 		return -1;
 
 	if (clear_cache)
-		doSystem("rm -rf %s", DDNS_CACHE_DIR);
+		remove_path_recursive(DDNS_CACHE_DIR);
 
-	mkdir(DDNS_CACHE_DIR, 0777);
+	mkdir_path_mode(DDNS_CACHE_DIR, 0777);
 
 	write_inadyn_conf(DDNS_CONF_FILE);
 

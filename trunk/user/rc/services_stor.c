@@ -770,7 +770,7 @@ int create_mp_link(char *search_dir, char *link_path, int force_first_valid)
 						}
 					}
 				} else {
-					if (mkdir_if_none(target_path, "777")) {
+					if (mkdir_if_none(target_path, "777") == 0 && check_if_dir_exist(target_path)) {
 						if (symlink(target_path, link_path) == 0) {
 							link_created = 1;
 							break;

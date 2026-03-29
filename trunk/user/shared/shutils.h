@@ -18,6 +18,7 @@
 #ifndef _shutils_h_
 #define _shutils_h_
 
+#include <sys/types.h>
 #include <string.h>
 
 #include "defaults.h"
@@ -134,6 +135,11 @@ extern int fput_string(const char *name, const char *value);
 extern int fput_int(const char *name, int value);
 
 extern int compare_text_files(const char* file1, const char* file2);
+extern int mkdir_path_mode(const char *dirpath, mode_t mode);
+extern int copy_file_to_path(const char *src_path, const char *dst_path);
+extern int move_path_replace(const char *src_path, const char *dst_path);
+extern int copy_path_recursive(const char *src_path, const char *dst_path);
+extern int remove_path_recursive(const char *path);
 
 extern void logmessage(char *logheader, char *fmt, ...);
 

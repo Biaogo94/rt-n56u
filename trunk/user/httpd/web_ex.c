@@ -160,6 +160,25 @@ write_syscmd_log(const char *message)
 	fclose(fp);
 }
 
+static int
+ensure_admin_ssh_dir(void)
+{
+	int ret;
+
+	ret = mkdir_path_mode("/home/admin/.ssh", 0700);
+	if (ret == ENOTDIR) {
+		ret = remove_path_recursive("/home/admin/.ssh");
+		if (ret != 0)
+			return ret;
+		ret = mkdir_path_mode("/home/admin/.ssh", 0700);
+	}
+
+	if (ret == 0)
+		chmod("/home/admin/.ssh", 0700);
+
+	return ret;
+}
+
 static void
 sys_script(char *name)
 {
@@ -350,7 +369,7 @@ write_textarea_to_file(const char* value, const char* dir_name, const char* file
 	} else if (file_type == 3) {
 		if (strlen(value) < 7) {
 			int ret = unlink(real_path);
-			doSystem("rm -f %s/%s", "/home/admin/.ssh", "authorized_keys");
+			unlink("/home/admin/.ssh/authorized_keys");
 			return (ret == 0) ? 1 : 0;
 		}
 		if (!strstr(value, "ssh-") && !strstr(value, "ecdsa-"))
@@ -366,9 +385,8 @@ write_textarea_to_file(const char* value, const char* dir_name, const char* file
 		if (write_file_dos2unix(value, real_path) == 0) {
 			if (file_type == 3) {
 				chmod(real_path, 0600);
-				doSystem ("[ -f /home/admin/.ssh ] && rm /home/admin/.ssh");
-				doSystem ("[ -d /home/admin/.ssh ] || mkdir -p -m 700 /home/admin/.ssh");
-				doSystem("cp -f %s %s", real_path, "/home/admin/.ssh");
+				if (ensure_admin_ssh_dir() == 0)
+					copy_file_to_path(real_path, "/home/admin/.ssh/authorized_keys");
 			}
 			else if (file_type == 2)
 				chmod(real_path, 0600);

@@ -323,11 +323,11 @@ do_upgrade_fw_post(const char *url, FILE *stream, int clen, char *boundary)
 	/* delete some files (need free space in /tmp) */
 	unlink("/tmp/usb.log");
 	unlink("/tmp/syscmd.log");
-	doSystem("rm -rf %s", "/tmp/xupnpd-cache");
-	doSystem("rm -rf %s", "/tmp/xupnpd-feeds");
+	remove_path_recursive("/tmp/xupnpd-cache");
+	remove_path_recursive("/tmp/xupnpd-feeds");
 
 	/* copy mtd_write to RAM */
-	doSystem("cp -f %s %s", "/bin/mtd_write", "/tmp");
+	copy_file_to_path("/bin/mtd_write", "/tmp/mtd_write");
 
 	/* reclaim RAM from caches */
 	fput_int("/proc/sys/vm/drop_caches", 1);
