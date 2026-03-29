@@ -622,7 +622,7 @@ int set_permission(const char *account,
 		fclose(fp);
 		
 		if (!strcmp(protocol, "cifs"))
-			system("/sbin/run_samba");
+			eval("/sbin/run_samba");
 		
 		return 0;
 	}
@@ -676,7 +676,7 @@ int set_permission(const char *account,
 	free(var_info);
 
 	if (!strcmp(protocol, "cifs"))
-		system("/sbin/run_samba");
+		eval("/sbin/run_samba");
 
 	return 0;
 }
@@ -742,7 +742,7 @@ int add_account(const char *const account, const char *const password)
 	free_disk_data(disk_list);
 
 	// 6. re-run samba
-	system("/sbin/run_samba");
+	eval("/sbin/run_samba");
 
 	return 0;
 }
@@ -827,7 +827,7 @@ int del_account(const char *const account)
 	free_disk_data(disk_list);
 
 	// 6. re-run ftp and samba
-	system("/sbin/run_ftpsamba");
+	eval("/sbin/run_ftpsamba");
 
 	return 0;
 }
@@ -913,7 +913,7 @@ int mod_account(const char *const account, const char *const new_account, const 
 
 rerun:
 	// 6. re-run ftp and samba
-	system("/sbin/run_ftpsamba");
+	eval("/sbin/run_ftpsamba");
 
 	return 0;
 }
