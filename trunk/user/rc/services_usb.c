@@ -109,11 +109,14 @@ power_control_usb_port(int port, int power_on)
 void
 start_u2ec(void)
 {
+	pid_t pid;
+	char *u2ec_argv[] = { "/usr/sbin/u2ec", NULL };
+
 	if (nvram_match("u2ec_enable", "0")) 
 		return;
 
 	unlink("/var/run/u2ec.pid");
-	system("/usr/sbin/u2ec &");
+	_eval(u2ec_argv, NULL, 0, &pid);
 	nvram_set("apps_u2ec_ex", "1");
 }
 
@@ -129,11 +132,14 @@ stop_u2ec(void)
 void
 start_lpd(void)
 {
+	pid_t pid;
+	char *lpd_argv[] = { "/usr/sbin/lpd", NULL };
+
 	if (nvram_match("lprd_enable", "0")) 
 		return;
 
 	unlink("/var/run/lpdparent.pid");
-	system("/usr/sbin/lpd &");
+	_eval(lpd_argv, NULL, 0, &pid);
 }
 
 void

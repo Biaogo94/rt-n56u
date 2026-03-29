@@ -831,12 +831,12 @@ init_crontab(void)
 {
 	int ret = 0; //no change
 #if defined (APP_SCUT)
-	ret |= system("/sbin/check_crontab.sh a/1 a a a a scutclient_watchcat.sh");
+	ret |= eval("/sbin/check_crontab.sh", "a/1", "a", "a", "a", "a", "scutclient_watchcat.sh");
 #endif
 #if defined (APP_SHADOWSOCKS)
-	ret |= system("/sbin/check_crontab.sh a/5 a a a a ss-watchcat.sh");
-	ret |= system("/sbin/check_crontab.sh 0 8 a/10 a a update_chnroute.sh");
-	ret |= system("/sbin/check_crontab.sh 0 7 a/10 a a update_gfwlist.sh");
+	ret |= eval("/sbin/check_crontab.sh", "a/5", "a", "a", "a", "a", "ss-watchcat.sh");
+	ret |= eval("/sbin/check_crontab.sh", "0", "8", "a/10", "a", "a", "update_chnroute.sh");
+	ret |= eval("/sbin/check_crontab.sh", "0", "7", "a/10", "a", "a", "update_gfwlist.sh");
 #endif
 	return ret;
 }
@@ -948,7 +948,11 @@ init_router(void)
 		restart_crond();
 	}
 	// system ready
-	system("/etc/storage/started_script.sh &");
+	{
+		pid_t pid;
+		char *started_argv[] = { "/etc/storage/started_script.sh", NULL };
+		_eval(started_argv, NULL, 0, &pid);
+	}
 }
 
 /*
@@ -1198,7 +1202,7 @@ handle_notifications(void)
 		}
 		else if (strcmp(entry->d_name, RCN_RESTART_HDDTUNE) == 0)
 		{
-			system("/sbin/hddtune.sh");
+			eval("/sbin/hddtune.sh");
 			set_pagecache_reclaim();
 		}
 #if defined(APP_FTPD)
