@@ -202,7 +202,7 @@ start_rpl2tp(int unit)
 	sleep(1);
 
 	/* start-session */
-	return system("/usr/sbin/l2tp-control \"start-session 0.0.0.0\"");
+	return eval("/usr/sbin/l2tp-control", "start-session 0.0.0.0");
 }
 #endif
 

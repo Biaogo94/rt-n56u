@@ -1431,8 +1431,11 @@ try_start_stor_apps(void)
 	// start apps if needed
 	if (count_stor_mountpoint()) {
 		start_stor_apps();
-		if (nvram_get_int("usb_opt_start"))
-			system("/usr/bin/opt-start.sh &");
+		if (nvram_get_int("usb_opt_start")) {
+			pid_t pid;
+			char *opt_start_argv[] = { "/usr/bin/opt-start.sh", NULL };
+			_eval(opt_start_argv, NULL, 0, &pid);
+		}
 	}
 }
 
