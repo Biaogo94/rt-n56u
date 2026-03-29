@@ -349,6 +349,37 @@ jobs:
         run: |
           python3 .github/scripts/firmware_targets.py check-sync
 
+      - name: Resolve optional plugins
+        id: plugins
+        shell: bash
+        env:
+          WORKFLOW_PLUGINS: ${{{{ github.event.inputs.plugins || '' }}}}
+        run: |
+          set -euo pipefail
+
+          catalog_script="${{{{ github.workspace }}}}/.github/scripts/firmware_targets.py"
+          plugin_selection="${{WORKFLOW_PLUGINS:-}}"
+
+          if [ -z "$plugin_selection" ]; then
+            echo "plugin_reset_list=" >> "$GITHUB_OUTPUT"
+            echo "plugin_enable_list=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          plugin_reset_list="$(python3 "$catalog_script" list-plugin-configs)"
+          if ! plugin_enable_list="$(python3 "$catalog_script" resolve-plugins --plugins "$plugin_selection")"; then
+            echo "::error::Invalid plugins input: $plugin_selection"
+            {{
+              echo "## Supported plugin aliases"
+              python3 "$catalog_script" list-plugin-aliases | tr ' ' '\\n'
+            }} >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          echo "plugin_reset_list=$plugin_reset_list" >> "$GITHUB_OUTPUT"
+          echo "plugin_enable_list=$plugin_enable_list" >> "$GITHUB_OUTPUT"
+          echo "Resolved plugin configs: $plugin_enable_list"
+
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -383,7 +414,8 @@ jobs:
         id: build
         shell: bash
         env:
-          WORKFLOW_PLUGINS: ${{{{ github.event.inputs.plugins || '' }}}}
+          FIRMWARE_PLUGIN_RESET_LIST: ${{{{ steps.plugins.outputs.plugin_reset_list }}}}
+          FIRMWARE_PLUGIN_ENABLE_LIST: ${{{{ steps.plugins.outputs.plugin_enable_list }}}}
         run: |
           set -euo pipefail
 
@@ -395,7 +427,6 @@ jobs:
           kernel_ver="$(sed -n 's/^FIRMWARE_KERNEL_VER=\\"\\([^\\"]*\\)\\"/\\1/p' Makefile | head -n1)"
           [ -n "$kernel_ver" ] || kernel_ver="unknown"
           git_version="$(git rev-parse --short=7 HEAD 2>/dev/null || echo unknown)"
-          plugin_selection="${{WORKFLOW_PLUGINS:-}}"
 
           set_output() {{
             local key="$1"
@@ -404,21 +435,8 @@ jobs:
             echo "${{key}}=${{value}}" >> "$GITHUB_OUTPUT"
           }}
 
-          if [ -n "$plugin_selection" ]; then
-            export FIRMWARE_PLUGIN_RESET_LIST="$(python3 "$catalog_script" list-plugin-configs)"
-            if ! FIRMWARE_PLUGIN_ENABLE_LIST="$(python3 "$catalog_script" resolve-plugins --plugins "$plugin_selection")"; then
-              echo "::error::Invalid plugins input: $plugin_selection"
-              {{
-                echo "## Supported plugin aliases"
-                python3 "$catalog_script" list-plugin-aliases | tr ' ' '\\n'
-              }} >> "$GITHUB_STEP_SUMMARY"
-              exit 1
-            fi
-            export FIRMWARE_PLUGIN_ENABLE_LIST
-            echo "Applying optional plugin override: $plugin_selection"
+          if [ -n "${{FIRMWARE_PLUGIN_ENABLE_LIST:-}}" ]; then
             echo "Resolved plugin configs: $FIRMWARE_PLUGIN_ENABLE_LIST"
-          else
-            unset FIRMWARE_PLUGIN_RESET_LIST FIRMWARE_PLUGIN_ENABLE_LIST
           fi
 
           set_output "KERNEL_VER" "$kernel_ver"
