@@ -338,11 +338,17 @@ void restart_ss_tunnel(void){
 }
 
 void update_chnroute(void){
-	eval("/bin/sh","-c","/usr/bin/update_chnroute.sh force &");
+	char *update_argv[] = { "/usr/bin/update_chnroute.sh", "force", NULL };
+	pid_t pid;
+
+	_eval(update_argv, NULL, 0, &pid);
 }
 
 void update_gfwlist(void){
-	eval("/bin/sh","-c","/usr/bin/update_gfwlist.sh force &");
+	char *update_argv[] = { "/usr/bin/update_gfwlist.sh", "force", NULL };
+	pid_t pid;
+
+	_eval(update_argv, NULL, 0, &pid);
 }
 
 #endif

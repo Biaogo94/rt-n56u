@@ -181,10 +181,9 @@ void change_passwd_unix(char *user, char *pass)
 		fclose(fp);
 	}
 
-	sprintf(cmdbuf, "/usr/sbin/chpasswd -m < %s", tmpfile);
-	system(cmdbuf);
-	sprintf(cmdbuf, "rm -f %s", tmpfile);
-	system(cmdbuf);
+	if (snprintf(cmdbuf, sizeof(cmdbuf), "/usr/sbin/chpasswd -m < %s", tmpfile) < (int)sizeof(cmdbuf))
+		system(cmdbuf);
+	unlink(tmpfile);
 
 	chmod("/etc/shadow", 0640);
 }
