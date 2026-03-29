@@ -86,7 +86,7 @@ arpbind_clear(void)
 			arp_flags = 0;
 			if (sscanf(buffer, "%15s %*s 0x%x %*s %*s %31s", arp_ip, &arp_flags, arp_if) == 3) {
 				if ((arp_flags & 0x04) && strcmp(arp_if, IFNAME_BR) == 0)
-					doSystem("arp -i %s -d %s", IFNAME_BR, arp_ip);
+					eval("arp", "-i", IFNAME_BR, "-d", arp_ip);
 			}
 		}
 		
@@ -196,7 +196,7 @@ fill_static_ethers(const char *lan_ip, const char *lan_mask)
 						smac[0], smac[1], smac[2], smac[3], smac[4], smac[5],
 						smac[6], smac[7], smac[8], smac[9], smac[10], smac[11], sip4);
 				}
-				doSystem("arp -i %s -s %s %s", IFNAME_BR, sip4, smac);
+				eval("arp", "-i", IFNAME_BR, "-s", sip4, smac);
 			}
 			
 			if (fp[2] && ipl->hname)

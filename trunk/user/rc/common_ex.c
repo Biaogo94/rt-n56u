@@ -564,15 +564,38 @@ get_module_refcount(const char *module_name)
 int
 module_smart_load(const char *module_name, const char *module_param)
 {
+	char *argv[16];
+	char *param_buf;
+	char *token;
 	int ret;
+	int argc;
 
 	if (is_module_loaded(module_name))
 		return 0;
 
-	if (module_param && *module_param)
-		ret = doSystem("modprobe -q %s %s", module_name, module_param);
-	else
-		ret = doSystem("modprobe -q %s", module_name);
+	argc = 0;
+	param_buf = NULL;
+	argv[argc++] = "modprobe";
+	argv[argc++] = "-q";
+	argv[argc++] = (char *)module_name;
+
+	if (module_param && *module_param) {
+		param_buf = strdup(module_param);
+		if (!param_buf)
+			return 0;
+
+		token = strtok(param_buf, " ");
+		while (token && argc < (ARRAY_SIZE(argv) - 1)) {
+			argv[argc++] = token;
+			token = strtok(NULL, " ");
+		}
+	}
+
+	argv[argc] = NULL;
+	ret = _eval(argv, NULL, 0, NULL);
+
+	if (param_buf)
+		free(param_buf);
 
 	return (ret == 0) ? 1 : 0;
 }
@@ -592,9 +615,9 @@ module_smart_unload(const char *module_name, int recurse_unload)
 		return 1;
 
 	if (recurse_unload)
-		ret = doSystem("modprobe -r %s", module_name);
+		ret = eval("modprobe", "-r", module_name);
 	else
-		ret = doSystem("rmmod %s", module_name);
+		ret = eval("rmmod", module_name);
 
 	return (ret == 0) ? 1 : 0;
 }
@@ -648,6 +671,8 @@ void mount_rwfs_partition(void)
 {
 	int mtd_rwfs;
 	char dev_ubi[16];
+	char mtd_path[24];
+	char mtd_idx[8];
 	const char *mp_rwfs = MP_MTD_RWFS;
 
 	if (nvram_get_int("mtd_rwfs_mount") == 0)
@@ -662,8 +687,10 @@ void mount_rwfs_partition(void)
 	if (!is_module_loaded("ubi"))
 		return;
 
-	if (doSystem("ubiattach -p /dev/mtd%d -d %d", mtd_rwfs, mtd_rwfs) == 0) {
-		mkdir(mp_rwfs, 0755);
+	snprintf(mtd_path, sizeof(mtd_path), "/dev/mtd%d", mtd_rwfs);
+	snprintf(mtd_idx, sizeof(mtd_idx), "%d", mtd_rwfs);
+	if (eval("ubiattach", "-p", mtd_path, "-d", mtd_idx) == 0) {
+		mkdir_path_mode(mp_rwfs, 0755);
 		snprintf(dev_ubi, sizeof(dev_ubi), "/dev/ubi%d_0", mtd_rwfs);
 		mount(dev_ubi, mp_rwfs, "ubifs", 0, NULL);
 	}
@@ -672,10 +699,11 @@ void mount_rwfs_partition(void)
 void umount_rwfs_partition(void)
 {
 	int mtd_rwfs;
+	char mtd_path[24];
 	const char *mp_rwfs = MP_MTD_RWFS;
 
 	if (check_if_dir_exist(mp_rwfs)) {
-		doSystem("/usr/bin/opt-umount.sh %s %s", "/dev/ubi", mp_rwfs);
+		eval("/usr/bin/opt-umount.sh", "/dev/ubi", mp_rwfs);
 		
 		if (umount(mp_rwfs) == 0)
 			rmdir(mp_rwfs);
@@ -688,13 +716,16 @@ void umount_rwfs_partition(void)
 	if (!is_module_loaded("ubi"))
 		return;
 
-	doSystem("ubidetach -p /dev/mtd%d 2>/dev/null", mtd_rwfs);
+	snprintf(mtd_path, sizeof(mtd_path), "/dev/mtd%d", mtd_rwfs);
+	eval_dumb("ubidetach", "-p", mtd_path);
 }
 
 void start_rwfs_optware(void)
 {
 	int mtd_rwfs;
+	pid_t pid;
 	char dev_ubi[16];
+	char *argv[4];
 	const char *mp_rwfs = MP_MTD_RWFS;
 
 	if (!check_if_dir_exist(mp_rwfs))
@@ -705,7 +736,11 @@ void start_rwfs_optware(void)
 		return;
 
 	snprintf(dev_ubi, sizeof(dev_ubi), "/dev/ubi%d_0", mtd_rwfs);
-	doSystem("/usr/bin/opt-mount.sh %s %s &", dev_ubi, mp_rwfs);
+	argv[0] = "/usr/bin/opt-mount.sh";
+	argv[1] = dev_ubi;
+	argv[2] = (char *)mp_rwfs;
+	argv[3] = NULL;
+	_eval(argv, NULL, 0, &pid);
 }
 #else
 inline void mount_rwfs_partition(void) {}
