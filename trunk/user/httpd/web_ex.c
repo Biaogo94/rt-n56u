@@ -868,19 +868,13 @@ set_wifi_param_int(const char* ifname, char* param, char* value, int val_min, in
 	if (i_value < val_min) i_value = val_min;
 	if (i_value > val_max) i_value = val_max;
 
-	doSystem("iwpriv %s set %s=%d", ifname, param, i_value);
+	iwpriv_set_int(ifname, param, i_value);
 }
 
 static void
 set_wifi_mrate(const char* ifname, const char* value, int is_aband)
 {
-	int i_mphy;
-	int i_mmcs = 0;
-
-	i_mphy = calc_mcast_tx_mode(atoi(value), is_aband, &i_mmcs);
-
-	doSystem("iwpriv %s set %s=%d", ifname, "McastPhyMode", i_mphy);
-	doSystem("iwpriv %s set %s=%d", ifname, "McastMcs", i_mmcs);
+	iwpriv_set_mcast_rate(ifname, atoi(value), is_aband);
 }
 
 static void

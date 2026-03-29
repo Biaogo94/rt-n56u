@@ -59,7 +59,7 @@ mlme_radio_wl(int is_on)
 	if (!wifname)
 		return;
 
-	doSystem("iwpriv %s set %s=%d", wifname, "RadioOn", (is_on) ? 1 : 0);
+	iwpriv_set_int(wifname, "RadioOn", (is_on) ? 1 : 0);
 #endif
 	mlme_state_wl(is_on);
 
@@ -76,7 +76,7 @@ mlme_radio_rt(int is_on)
 	if (!wifname)
 		return;
 
-	doSystem("iwpriv %s set %s=%d", wifname, "RadioOn", (is_on) ? 1 : 0);
+	iwpriv_set_int(wifname, "RadioOn", (is_on) ? 1 : 0);
 
 	mlme_state_rt(is_on);
 
@@ -87,7 +87,7 @@ mlme_radio_rt(int is_on)
 #if defined(USE_RT3352_MII)
 	if (is_on) {
 		int i_val = nvram_wlan_get_int(0, "TxPower");
-		doSystem("iwpriv %s set %s=%d", wifname, "TxPower", i_val);
+		iwpriv_set_int(wifname, "TxPower", i_val);
 	}
 
 	// isolation iNIC port from all LAN ports
@@ -248,7 +248,7 @@ update_inic_mii(void)
 	const char *ifname_inic = IFNAME_INIC_MAIN;
 
 	// below params always set in new iNIC_mii.obj
-	doSystem("iwpriv %s set %s=%d", ifname_inic, "asiccheck", 1);
+	iwpriv_set_int(ifname_inic, "asiccheck", 1);
 
 	// config RT3352 embedded switch for VLAN3 passthrough
 	doSystem("iwpriv %s switch setVlanId=%d,%d", ifname_inic, 2, INIC_GUEST_VLAN_VID);
@@ -258,9 +258,9 @@ update_inic_mii(void)
 		doSystem("iwpriv %s switch setPortPowerDown=%d,%d", ifname_inic, i, 1);
 
 	// add static IGMP entries (workaround for IGMP snooping bug in iNIC firmware)
-	doSystem("iwpriv %s set IgmpAdd=%s", ifname_inic, "01:00:5e:7f:ff:fa"); // SSDP IPv4
-	doSystem("iwpriv %s set IgmpAdd=%s", ifname_inic, "01:00:5e:00:00:fb"); // mDNS IPv4
-	doSystem("iwpriv %s set IgmpAdd=%s", ifname_inic, "01:00:5e:00:00:09"); // RIP  IPv4
+	iwpriv_set_str(ifname_inic, "IgmpAdd", "01:00:5e:7f:ff:fa"); // SSDP IPv4
+	iwpriv_set_str(ifname_inic, "IgmpAdd", "01:00:5e:00:00:fb"); // mDNS IPv4
+	iwpriv_set_str(ifname_inic, "IgmpAdd", "01:00:5e:00:00:09"); // RIP  IPv4
 //	doSystem("iwpriv %s set IgmpAdd=%s", ifname_inic, "33:33:00:00:00:0c"); // SSDP IPv6
 //	doSystem("iwpriv %s set IgmpAdd=%s", ifname_inic, "33:33:00:00:00:fb"); // mDNS IPv6
 #endif
@@ -291,7 +291,7 @@ start_inic_mii(void)
 			phy_isolate_inic(0);
 		} else {
 			/* disable mlme radio */
-			doSystem("iwpriv %s set %s=%d", ifname_inic, "RadioOn", 0);
+			iwpriv_set_int(ifname_inic, "RadioOn", 0);
 		}
 		
 		/* add rai0 to bridge (needed for RADIUS) */
@@ -321,7 +321,7 @@ check_inic_mii_rebooted(void)
 	int rt_mode_x;
 
 	if (!get_mlme_radio_rt()) {
-		doSystem("iwpriv %s set %s=%d", IFNAME_INIC_MAIN, "RadioOn", 0);
+		iwpriv_set_int(IFNAME_INIC_MAIN, "RadioOn", 0);
 		return;
 	}
 
@@ -350,7 +350,7 @@ update_vga_clamp_wl(int first_call)
 	if (i_val == 0 && first_call)
 		return;
 
-	doSystem("iwpriv %s set %s=%d", wifname, "VgaClamp", i_val);
+	iwpriv_set_int(wifname, "VgaClamp", i_val);
 #endif
 #endif
 }
@@ -370,7 +370,7 @@ update_vga_clamp_rt(int first_call)
 	if (i_val == 0 && first_call)
 		return;
 
-	doSystem("iwpriv %s set %s=%d", wifname, "VgaClamp", i_val);
+	iwpriv_set_int(wifname, "VgaClamp", i_val);
 #endif
 }
 
@@ -439,9 +439,9 @@ set_wifi_rssi_threshold(const char* ifname, int is_aband)
 	}
 
 	if (kickrssi <= 0 && kickrssi >= -100)
-		doSystem("iwpriv %s set %s=%d", ifname, "KickStaRssiLow", kickrssi);
+		iwpriv_set_int(ifname, "KickStaRssiLow", kickrssi);
 	if (assocrssi <= 0 && assocrssi >= -100)
-		doSystem("iwpriv %s set %s=%d", ifname, "AssocReqRssiThres", assocrssi);
+		iwpriv_set_int(ifname, "AssocReqRssiThres", assocrssi);
 }
 
 void 
@@ -639,12 +639,12 @@ start_wifi_apcli_wl(int radio_on)
 		if (nvram_wlan_get_int(1, "sta_auto"))
 #if defined (USE_WID_5G) && (USE_WID_5G==7615 || USE_WID_5G==7915)
 		{
-			doSystem("iwpriv %s set %s=%d", ifname_apcli, "ApCliAutoConnect", 3);
+			iwpriv_set_int(ifname_apcli, "ApCliAutoConnect", 3);
 			logmessage(LOGNAME, "Set ApCliAutoConnect to 3");
 		}
 #else
 		{
-			doSystem("iwpriv %s set %s=%d", ifname_apcli, "ApCliAutoConnect", 1);
+			iwpriv_set_int(ifname_apcli, "ApCliAutoConnect", 1);
 			logmessage(LOGNAME, "Set ApCliAutoConnect to 1");
 		}
 #endif
@@ -670,12 +670,12 @@ start_wifi_apcli_rt(int radio_on)
 		if (nvram_wlan_get_int(0, "sta_auto"))
 #if defined (USE_WID_2G) && (USE_WID_2G==7615 || USE_WID_2G==7915)
 		{
-			doSystem("iwpriv %s set %s=%d", ifname_apcli, "ApCliAutoConnect", 3);
+			iwpriv_set_int(ifname_apcli, "ApCliAutoConnect", 3);
 			logmessage(LOGNAME, "Set ApCliAutoConnect to 3");
 		}
 #else
 		{
-			doSystem("iwpriv %s set %s=%d", ifname_apcli, "ApCliAutoConnect", 1);
+			iwpriv_set_int(ifname_apcli, "ApCliAutoConnect", 1);
 			logmessage(LOGNAME, "Set ApCliAutoConnect to 1");
 		}
 #endif
@@ -713,26 +713,26 @@ reconnect_apcli(const char *ifname_apcli, int force)
 	if (get_apcli_sta_auto(is_aband)) {
 		if (is_aband) {
 #if defined (USE_WID_5G) && (USB_WID_5G==7615 || USE_WID_5G==7915)
-			doSystem("iwpriv %s set %s=%d", ifname_apcli, "ApCliAutoConnect", 3);
+			iwpriv_set_int(ifname_apcli, "ApCliAutoConnect", 3);
 			logmessage(LOGNAME, "Set ApCliAutoConnect to 3");
 #else
-			doSystem("iwpriv %s set %s=%d", ifname_apcli, "ApCliAutoConnect", 1);
+			iwpriv_set_int(ifname_apcli, "ApCliAutoConnect", 1);
 			logmessage(LOGNAME, "Set ApCliAutoConnect to 1");
 #endif
 		} else {
 #if defined (USE_WID_2G) && (USB_WID_2G==7615 || USE_WID_2G==7915)
-			doSystem("iwpriv %s set %s=%d", ifname_apcli, "ApCliAutoConnect", 3);
+			iwpriv_set_int(ifname_apcli, "ApCliAutoConnect", 3);
 			logmessage(LOGNAME, "Set ApCliAutoConnect to 3");
 #else
-			doSystem("iwpriv %s set %s=%d", ifname_apcli, "ApCliAutoConnect", 1);
+			iwpriv_set_int(ifname_apcli, "ApCliAutoConnect", 1);
 			logmessage(LOGNAME, "Set ApCliAutoConnect to 1");
 #endif
 		}
 		
 	} else if (force) {
-		doSystem("iwpriv %s set %s=%d", ifname_apcli, "ApCliEnable", 0);
+		iwpriv_set_int(ifname_apcli, "ApCliEnable", 0);
 		usleep(300000);
-		doSystem("iwpriv %s set %s=%d", ifname_apcli, "ApCliEnable", 1);
+		iwpriv_set_int(ifname_apcli, "ApCliEnable", 1);
 	}
 }
 

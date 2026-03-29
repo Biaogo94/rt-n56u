@@ -36,6 +36,7 @@
 
 #include "nvram_linux.h"
 #include "netutils.h"
+#include "shutils.h"
 #include "rtutils.h"
 
 static const char *wifn_list[][4] = {
@@ -317,6 +318,32 @@ calc_mcast_tx_mode(int i_val, int is_aband, int *p_mmcs)
 	*p_mmcs = i_mmcs;
 
 	return i_mphy;
+}
+
+int
+iwpriv_set_int(const char *ifname, const char *param, int value)
+{
+	return doSystem("iwpriv %s set %s=%d", ifname, param, value);
+}
+
+int
+iwpriv_set_str(const char *ifname, const char *param, const char *value)
+{
+	return doSystem("iwpriv %s set %s=%s", ifname, param, value);
+}
+
+int
+iwpriv_set_mcast_rate(const char *ifname, int value, int is_aband)
+{
+	int i_mphy;
+	int i_mmcs = 0;
+	int ret;
+
+	i_mphy = calc_mcast_tx_mode(value, is_aband, &i_mmcs);
+	ret = iwpriv_set_int(ifname, "McastPhyMode", i_mphy);
+	ret |= iwpriv_set_int(ifname, "McastMcs", i_mmcs);
+
+	return ret;
 }
 
 void

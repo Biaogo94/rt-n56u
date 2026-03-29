@@ -23,6 +23,9 @@ extern const char* find_wlan_if_up(int is_aband);
 extern int calc_phy_mode(int i_val, int is_aband);
 extern int calc_fixed_tx_mode(int i_val, int is_aband, int i_phy_mode, int *p_mcs);
 extern int calc_mcast_tx_mode(int i_val, int is_aband, int *p_mmcs);
+extern int iwpriv_set_int(const char *ifname, const char *param, int value);
+extern int iwpriv_set_str(const char *ifname, const char *param, const char *value);
+extern int iwpriv_set_mcast_rate(const char *ifname, int value, int is_aband);
 
 extern void  nvram_wlan_set(int is_aband, const char *param, char *value);
 extern void  nvram_wlan_set_int(int is_aband, const char *param, int value);
