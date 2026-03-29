@@ -20,6 +20,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <errno.h>
+#include <limits.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -31,6 +32,33 @@
 #include <usb_info.h>
 
 #include "httpd.h"
+
+static void
+remove_appledouble_files(const char *mount_point)
+{
+	DIR *dir;
+	struct dirent *entry;
+	char path[PATH_MAX];
+
+	if (!mount_point || !*mount_point)
+		return;
+
+	dir = opendir(mount_point);
+	if (!dir)
+		return;
+
+	while ((entry = readdir(dir)) != NULL) {
+		if (strncmp(entry->d_name, ".__", 3) != 0 || entry->d_name[3] == '\0')
+			continue;
+
+		if (snprintf(path, sizeof(path), "%s/%s", mount_point, entry->d_name) >= sizeof(path))
+			continue;
+
+		unlink(path);
+	}
+
+	closedir(dir);
+}
 
 #if defined (USE_USB_SUPPORT)
 int
@@ -587,7 +615,7 @@ ej_set_AiDisk_status(int eid, webs_t wp, int argc, char **argv)
 		if (!strcmp(flag, "on")) {
 			nvram_set_int("enable_samba", 1);
 			nvram_commit_safe();
-			result = system("/sbin/run_samba");
+			result = eval("/sbin/run_samba");
 		}
 		else if (!strcmp(flag, "off")) {
 			nvram_set_int("enable_samba", 0);
@@ -595,7 +623,7 @@ ej_set_AiDisk_status(int eid, webs_t wp, int argc, char **argv)
 			if (!pids("smbd"))
 				goto SET_AIDISK_STATUS_SUCCESS;
 
-			result = system("/sbin/stop_samba");
+			result = eval("/sbin/stop_samba");
 		}
 		else {
 			websWrite(wp, "<script>\n");
@@ -608,14 +636,14 @@ ej_set_AiDisk_status(int eid, webs_t wp, int argc, char **argv)
 		if (!strcmp(flag, "on")) {
 			nvram_set_int("enable_ftp", 1);
 			nvram_commit_safe();
-			result = system("run_ftp");
+			result = eval("run_ftp");
 		}
 		else if (!strcmp(flag, "off")) {
 			nvram_set_int("enable_ftp", 0);
 			nvram_commit_safe();
 			if (!pids("vsftpd"))
 				goto SET_AIDISK_STATUS_SUCCESS;
-			result = system("/sbin/stop_ftp");
+			result = eval("/sbin/stop_ftp");
 		}
 		else {
 			websWrite(wp, "<script>\n");
@@ -702,7 +730,7 @@ ej_safely_remove_disk(int eid, webs_t wp, int argc, char **argv)
 #endif
 #if defined (USE_MMC_SUPPORT)
 	if (port_num == MMC_VIRT_PORT_ID)
-		result = system("/sbin/ejmmc");
+		result = eval("/sbin/ejmmc");
 	else
 #endif
 		result = doSystem("/sbin/ejusb %d %s", port_num, disk_devn);
@@ -1502,8 +1530,6 @@ ej_initial_account(int eid, webs_t wp, int argc, char **argv)
 {
 	disk_info_t *disks_info, *follow_disk;
 	partition_info_t *follow_partition;
-	char *command;
-	int len, result;
 
 	nvram_set_int("acc_num", 0);
 	nvram_commit_safe();
@@ -1519,20 +1545,7 @@ ej_initial_account(int eid, webs_t wp, int argc, char **argv)
 	for (follow_disk = disks_info; follow_disk != NULL; follow_disk = follow_disk->next)
 		for (follow_partition = follow_disk->partitions; follow_partition != NULL; follow_partition = follow_partition->next)
 			if (follow_partition->mount_point != NULL && strlen(follow_partition->mount_point) > 0) {
-				len = strlen("rm -f ")+strlen(follow_partition->mount_point)+strlen("/.__*");
-				command = (char *)malloc(sizeof(char)*(len+1));
-				if (command == NULL) {
-					websWrite(wp, "<script>\n");
-					websWrite(wp, "initial_account_error(\'%s\');\n", get_alert_msg_from_dict("System1"));
-					websWrite(wp, "</script>\n");
-					return -1;
-				}
-				sprintf(command, "rm -f %s/.__*", follow_partition->mount_point);
-				command[len] = 0;
-
-				result = system(command);
-				free(command);
-
+				remove_appledouble_files(follow_partition->mount_point);
 				initial_folder_list_in_mount_path(follow_partition->mount_point);
 				initial_all_var_file_in_mount_path(follow_partition->mount_point);
 			}
