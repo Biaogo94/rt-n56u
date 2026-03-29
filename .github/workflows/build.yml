@@ -11,7 +11,6 @@ on:
     branches:
       - master
       - main
-      - performance-optimization
     paths-ignore:
       - '**.md'
       - 'docs/**'
@@ -75,6 +74,11 @@ on:
           - WR1200JS
           - XY-C1
           - ZTE_E8820S
+      plugins:
+        description: 'Optional plugins, comma-separated aliases; leave empty for defaults (e.g. smartdns,ttyd,wireguard)'
+        required: false
+        default: ''
+        type: string
 
 env:
   IMAGES_DIR: /opt/images
@@ -123,6 +127,8 @@ jobs:
       - name: Build firmware
         id: build
         shell: bash
+        env:
+          WORKFLOW_PLUGINS: ${{ github.event.inputs.plugins || '' }}
         run: |
           set -euo pipefail
 
@@ -134,6 +140,7 @@ jobs:
           kernel_ver="$(sed -n 's/^FIRMWARE_KERNEL_VER=\"\([^\"]*\)\"/\1/p' Makefile | head -n1)"
           [ -n "$kernel_ver" ] || kernel_ver="unknown"
           git_version="$(git rev-parse --short=7 HEAD 2>/dev/null || echo unknown)"
+          plugin_selection="${WORKFLOW_PLUGINS:-}"
 
           set_output() {
             local key="$1"
@@ -141,6 +148,23 @@ jobs:
             echo "${key}=${value}" >> "$GITHUB_ENV"
             echo "${key}=${value}" >> "$GITHUB_OUTPUT"
           }
+
+          if [ -n "$plugin_selection" ]; then
+            export FIRMWARE_PLUGIN_RESET_LIST="$(python3 "$catalog_script" list-plugin-configs)"
+            if ! FIRMWARE_PLUGIN_ENABLE_LIST="$(python3 "$catalog_script" resolve-plugins --plugins "$plugin_selection")"; then
+              echo "::error::Invalid plugins input: $plugin_selection"
+              {
+                echo "## Supported plugin aliases"
+                python3 "$catalog_script" list-plugin-aliases | tr ' ' '\n'
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 1
+            fi
+            export FIRMWARE_PLUGIN_ENABLE_LIST
+            echo "Applying optional plugin override: $plugin_selection"
+            echo "Resolved plugin configs: $FIRMWARE_PLUGIN_ENABLE_LIST"
+          else
+            unset FIRMWARE_PLUGIN_RESET_LIST FIRMWARE_PLUGIN_ENABLE_LIST
+          fi
 
           set_output "KERNEL_VER" "$kernel_ver"
           set_output "GIT_VERSION" "$git_version"

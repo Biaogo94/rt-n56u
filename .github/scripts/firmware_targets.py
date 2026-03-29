@@ -18,6 +18,67 @@ VARIANT_ORDER = ["mt7620", "mt7628", "mt7621", "mt7621-usb"]
 DEFAULT_SMOKE_TARGET = "RM2100"
 ALL_TARGETS_OPTION = "ALL"
 
+
+def normalize_plugin_name(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", value.strip().lower()).strip("-")
+
+
+OPTIONAL_FIRMWARE_PLUGINS = [
+    ("curl", "CONFIG_FIRMWARE_INCLUDE_CURL", ["curl"]),
+    ("scutclient", "CONFIG_FIRMWARE_INCLUDE_SCUTCLIENT", ["scutclient"]),
+    ("gdut-drcom", "CONFIG_FIRMWARE_INCLUDE_GDUT_DRCOM", ["gdut-drcom", "gdut_drcom"]),
+    ("dogcom", "CONFIG_FIRMWARE_INCLUDE_DOGCOM", ["dogcom"]),
+    ("minieap", "CONFIG_FIRMWARE_INCLUDE_MINIEAP", ["minieap"]),
+    ("njit-client", "CONFIG_FIRMWARE_INCLUDE_NJIT_CLIENT", ["njit-client", "njit_client", "njit"]),
+    ("napt66", "CONFIG_FIRMWARE_INCLUDE_NAPT66", ["napt66"]),
+    (
+        "softether-vpnserver",
+        "CONFIG_FIRMWARE_INCLUDE_SOFTETHERVPN_SERVER",
+        ["softether-vpnserver", "softether-server", "softethervpn-server"],
+    ),
+    (
+        "softether-vpnclient",
+        "CONFIG_FIRMWARE_INCLUDE_SOFTETHERVPN_CLIENT",
+        ["softether-vpnclient", "softether-client", "softethervpn-client"],
+    ),
+    (
+        "softether-vpncmd",
+        "CONFIG_FIRMWARE_INCLUDE_SOFTETHERVPN_CMD",
+        ["softether-vpncmd", "softether-cmd", "softethervpn-cmd"],
+    ),
+    ("vlmcsd", "CONFIG_FIRMWARE_INCLUDE_VLMCSD", ["vlmcsd"]),
+    ("ttyd", "CONFIG_FIRMWARE_INCLUDE_TTYD", ["ttyd"]),
+    ("lrzsz", "CONFIG_FIRMWARE_INCLUDE_LRZSZ", ["lrzsz"]),
+    ("htop", "CONFIG_FIRMWARE_INCLUDE_HTOP", ["htop"]),
+    ("nano", "CONFIG_FIRMWARE_INCLUDE_NANO", ["nano"]),
+    ("iperf3", "CONFIG_FIRMWARE_INCLUDE_IPERF3", ["iperf3"]),
+    ("dump1090", "CONFIG_FIRMWARE_INCLUDE_DUMP1090", ["dump1090"]),
+    ("rtl-sdr", "CONFIG_FIRMWARE_INCLUDE_RTL_SDR", ["rtl-sdr", "rtl_sdr", "rtlsdr"]),
+    ("samba3.6", "CONFIG_FIRMWARE_INCLUDE_SMBD36", ["samba3.6", "samba36", "smbd36"]),
+    ("mtr", "CONFIG_FIRMWARE_INCLUDE_MTR", ["mtr"]),
+    ("socat", "CONFIG_FIRMWARE_INCLUDE_SOCAT", ["socat"]),
+    ("srelay", "CONFIG_FIRMWARE_INCLUDE_SRELAY", ["srelay"]),
+    ("3proxy", "CONFIG_FIRMWARE_INCLUDE_3PROXY", ["3proxy"]),
+    ("mentohust", "CONFIG_FIRMWARE_INCLUDE_MENTOHUST", ["mentohust"]),
+    ("frpc", "CONFIG_FIRMWARE_INCLUDE_FRPC", ["frpc"]),
+    ("frps", "CONFIG_FIRMWARE_INCLUDE_FRPS", ["frps"]),
+    ("tunsafe", "CONFIG_FIRMWARE_INCLUDE_TUNSAFE", ["tunsafe"]),
+    ("wireguard-go", "CONFIG_FIRMWARE_INCLUDE_WIREGUARD", ["wireguard-go", "wireguard_go", "wireguard"]),
+    ("smartdns", "CONFIG_FIRMWARE_INCLUDE_SMARTDNS", ["smartdns"]),
+]
+
+PLUGIN_ALIAS_MAP = {}
+OPTIONAL_PLUGIN_CONFIGS = []
+for display_name, config_name, aliases in OPTIONAL_FIRMWARE_PLUGINS:
+    OPTIONAL_PLUGIN_CONFIGS.append(config_name)
+    for alias in aliases:
+        PLUGIN_ALIAS_MAP[normalize_plugin_name(alias)] = config_name
+
+OPTIONAL_PLUGIN_CONFIGS = sorted(set(OPTIONAL_PLUGIN_CONFIGS))
+OPTIONAL_PLUGIN_CONFIG_SET = set(OPTIONAL_PLUGIN_CONFIGS)
+OPTIONAL_PLUGIN_HINT = ", ".join(display_name for display_name, _, _ in OPTIONAL_FIRMWARE_PLUGINS)
+OPTIONAL_PLUGIN_ALIASES = " ".join(display_name for display_name, _, _ in OPTIONAL_FIRMWARE_PLUGINS)
+
 CI_GROUPS = {
     "mt7620": ["PSG1208", "PSG1218", "NEWIFI-MINI", "MI-MINI"],
     "mt7628": ["HC5861B", "MI-NANO", "MZ-R13", "MZ-R13P", "360P2"],
@@ -91,6 +152,40 @@ def get_release_tier(target: str, soc: str, radios: str) -> str:
     if soc == "mt7621" and ("7615" in radios or "7915" in radios):
         return "secondary"
     return "compatibility"
+
+
+def resolve_plugin_tokens(plugin_input: str) -> list[str]:
+    resolved = []
+    seen = set()
+    unknown = []
+
+    for raw_token in re.split(r"[\s,;]+", plugin_input.strip()):
+        token = raw_token.strip()
+        if not token:
+            continue
+
+        if token.startswith("CONFIG_") and token in OPTIONAL_PLUGIN_CONFIG_SET:
+            config_name = token
+        else:
+            config_name = PLUGIN_ALIAS_MAP.get(normalize_plugin_name(token))
+
+        if not config_name:
+            unknown.append(token)
+            continue
+
+        if config_name not in seen:
+            resolved.append(config_name)
+            seen.add(config_name)
+
+    if unknown:
+        raise ValueError(
+            "Unknown plugin(s): "
+            + ", ".join(unknown)
+            + ". Supported plugins: "
+            + OPTIONAL_PLUGIN_HINT
+        )
+
+    return resolved
 
 
 def build_catalog() -> dict:
@@ -218,7 +313,6 @@ on:
     branches:
       - master
       - main
-      - performance-optimization
     paths-ignore:
       - '**.md'
       - 'docs/**'
@@ -235,6 +329,11 @@ on:
         type: choice
         options:
 {manual_target_options}
+      plugins:
+        description: 'Optional plugins, comma-separated aliases; leave empty for defaults (e.g. smartdns,ttyd,wireguard)'
+        required: false
+        default: ''
+        type: string
 
 env:
   IMAGES_DIR: /opt/images
@@ -283,6 +382,8 @@ jobs:
       - name: Build firmware
         id: build
         shell: bash
+        env:
+          WORKFLOW_PLUGINS: ${{{{ github.event.inputs.plugins || '' }}}}
         run: |
           set -euo pipefail
 
@@ -294,6 +395,7 @@ jobs:
           kernel_ver="$(sed -n 's/^FIRMWARE_KERNEL_VER=\\"\\([^\\"]*\\)\\"/\\1/p' Makefile | head -n1)"
           [ -n "$kernel_ver" ] || kernel_ver="unknown"
           git_version="$(git rev-parse --short=7 HEAD 2>/dev/null || echo unknown)"
+          plugin_selection="${{WORKFLOW_PLUGINS:-}}"
 
           set_output() {{
             local key="$1"
@@ -301,6 +403,23 @@ jobs:
             echo "${{key}}=${{value}}" >> "$GITHUB_ENV"
             echo "${{key}}=${{value}}" >> "$GITHUB_OUTPUT"
           }}
+
+          if [ -n "$plugin_selection" ]; then
+            export FIRMWARE_PLUGIN_RESET_LIST="$(python3 "$catalog_script" list-plugin-configs)"
+            if ! FIRMWARE_PLUGIN_ENABLE_LIST="$(python3 "$catalog_script" resolve-plugins --plugins "$plugin_selection")"; then
+              echo "::error::Invalid plugins input: $plugin_selection"
+              {{
+                echo "## Supported plugin aliases"
+                python3 "$catalog_script" list-plugin-aliases | tr ' ' '\\n'
+              }} >> "$GITHUB_STEP_SUMMARY"
+              exit 1
+            fi
+            export FIRMWARE_PLUGIN_ENABLE_LIST
+            echo "Applying optional plugin override: $plugin_selection"
+            echo "Resolved plugin configs: $FIRMWARE_PLUGIN_ENABLE_LIST"
+          else
+            unset FIRMWARE_PLUGIN_RESET_LIST FIRMWARE_PLUGIN_ENABLE_LIST
+          fi
 
           set_output "KERNEL_VER" "$kernel_ver"
           set_output "GIT_VERSION" "$git_version"
@@ -432,6 +551,27 @@ def command_list_all_targets(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_list_plugin_configs(args: argparse.Namespace) -> int:
+    sys.stdout.write(" ".join(OPTIONAL_PLUGIN_CONFIGS))
+    return 0
+
+
+def command_list_plugin_aliases(args: argparse.Namespace) -> int:
+    sys.stdout.write(OPTIONAL_PLUGIN_ALIASES)
+    return 0
+
+
+def command_resolve_plugins(args: argparse.Namespace) -> int:
+    try:
+        configs = resolve_plugin_tokens(args.plugins)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
+    sys.stdout.write(" ".join(configs))
+    return 0
+
+
 def command_write_manifest(args: argparse.Namespace) -> int:
     write_manifest(
         catalog_path=Path(args.catalog),
@@ -490,6 +630,16 @@ def build_parser() -> argparse.ArgumentParser:
 
     list_all_targets = subparsers.add_parser("list-all-targets", help="Print all targets as a space-separated list.")
     list_all_targets.set_defaults(func=command_list_all_targets)
+
+    list_plugin_configs = subparsers.add_parser("list-plugin-configs", help="Print optional plugin config keys.")
+    list_plugin_configs.set_defaults(func=command_list_plugin_configs)
+
+    list_plugin_aliases = subparsers.add_parser("list-plugin-aliases", help="Print supported plugin aliases.")
+    list_plugin_aliases.set_defaults(func=command_list_plugin_aliases)
+
+    resolve_plugins = subparsers.add_parser("resolve-plugins", help="Resolve plugin aliases to config keys.")
+    resolve_plugins.add_argument("--plugins", required=True, help="Comma or space separated plugin aliases.")
+    resolve_plugins.set_defaults(func=command_resolve_plugins)
 
     write_manifest_parser = subparsers.add_parser("write-manifest", help="Write manifest.json for built firmware images.")
     write_manifest_parser.add_argument("--images-dir", required=True, help="Directory containing Padavan-*.trx images.")

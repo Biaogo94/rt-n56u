@@ -204,10 +204,11 @@ fakeroot ./build_firmware_modify PSG1218
 Actions -> Build Firmware -> Run workflow
 ```
 
-- `build_mode` 选择 `single-target` 时，可直接从 `target` 下拉框选择要编译的型号
-- `build_mode` 选择 `variant-batch` 时，可从 `variant` 下拉框选择批量构建的平台分组
+- `target` 下拉框可直接选择要编译的型号，或选择 `ALL` 构建全部型号
+- `plugins` 可选项支持输入逗号分隔的插件别名，例如：`smartdns,ttyd,wireguard-go`
+- `plugins` 留空时，保持该机型模板中的默认插件配置
+- `plugins` 输入错误时，workflow 会在开始编译前直接报错，并列出支持的插件别名
 - `target` 下拉列表由 [`.github/firmware-targets.json`](./.github/firmware-targets.json) 统一描述，并由 [`.github/scripts/firmware_targets.py`](./.github/scripts/firmware_targets.py) 生成 `Build Firmware` 工作流
-- `variant-batch` 使用同一份目标目录中的分组定义，避免工作流里重复维护机型列表
 - 单次构建 artifact 默认包含：
   - `Padavan-型号-内核版本.trx`
   - `md5sum.txt`

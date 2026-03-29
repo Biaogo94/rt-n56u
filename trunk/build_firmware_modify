@@ -55,8 +55,39 @@ func_disable_busybox_param()
 		sed -i "s/$1=y/\# $1 is not set/" $busybox_tf
 	fi
 }
+
+func_set_root_param()
+{
+	if grep -q "^$1=" "$ROOTDIR/.config" ; then
+		sed -i "s/^$1=.*/$1=$2/" "$ROOTDIR/.config"
+	else
+		echo "$1=$2" >> "$ROOTDIR/.config"
+	fi
+}
+
+func_apply_firmware_plugin_overrides()
+{
+	key=""
+
+	if [ -n "$FIRMWARE_PLUGIN_RESET_LIST" ] ; then
+		for key in $FIRMWARE_PLUGIN_RESET_LIST ; do
+			func_set_root_param "$key" "n"
+		done
+	fi
+
+	if [ -n "$FIRMWARE_PLUGIN_ENABLE_LIST" ] ; then
+		for key in $FIRMWARE_PLUGIN_ENABLE_LIST ; do
+			func_set_root_param "$key" "y"
+		done
+	fi
+}
 . $ROOTDIR/toolchain.inc
 echo "CONFIG_TOOLCHAIN_DIR=${CONFIG_TOOLCHAIN_DIR}" >> .config
+
+if [ -n "$FIRMWARE_PLUGIN_RESET_LIST" ] || [ -n "$FIRMWARE_PLUGIN_ENABLE_LIST" ] ; then
+	echo "Applying firmware plugin overrides"
+	func_apply_firmware_plugin_overrides
+fi
 
 # load project root config
 . $ROOTDIR/.config
