@@ -32,7 +32,7 @@ on:
       target:
         description: 'Build target model'
         required: true
-        default: 'PSG1218'
+        default: 'RM2100'
         type: choice
         options:
           - 360P2
@@ -176,7 +176,17 @@ jobs:
             done
           }
 
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.build_mode }}" = "single-target" ]; then
+          if [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            target="RM2100"
+            echo "Building smoke target for ${{ github.event_name }}: $target"
+            fakeroot ./build_firmware_modify "$target"
+            collect_image "$target"
+            set_output "BUILD_MODE" "smoke-target"
+            set_output "BUILD_VARIANT" ""
+            set_output "build_mode" "smoke-target"
+            set_output "build_variant" ""
+            set_output "artifact_name" "Padavan-${target}-${kernel_ver}"
+          elif [ "${{ github.event.inputs.build_mode }}" = "single-target" ]; then
             target="${{ github.event.inputs.target }}"
             echo "Building single target: $target"
             fakeroot ./build_firmware_modify "$target"
