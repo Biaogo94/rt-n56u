@@ -2021,18 +2021,11 @@ static int scutclient_status_hook(int eid, webs_t wp, int argc, char **argv)
 
 static int scutclient_version_hook(int eid, webs_t wp, int argc, char **argv)
 {
-	FILE *fstream = NULL;
 	char ver[8];
+	char *scut_argv[] = { "/usr/bin/bin_scutclient", "-V", NULL };
+
 	memset(ver, 0, sizeof(ver));
-	fstream = popen("/usr/bin/bin_scutclient -V","r");
-	if(fstream) {
-		fgets(ver, sizeof(ver), fstream);
-		pclose(fstream);
-		if (strlen(ver) > 0)
-			ver[strlen(ver) - 1] = 0;
-		if (!(ver[0]>='0' && ver[0]<='9'))
-			sprintf(ver, "%s", "unknown");
-	} else {
+	if (read_cmd_stdout_line(scut_argv, ver, sizeof(ver)) != 0 || !(ver[0] >= '0' && ver[0] <= '9')) {
 		sprintf(ver, "%s", "unknown");
 	}
 	websWrite(wp, "function scutclient_version() { return '%s';}\n", ver);
@@ -2096,31 +2089,13 @@ static int shadowsocks_status_hook(int eid, webs_t wp, int argc, char **argv)
 
 static int rules_count_hook(int eid, webs_t wp, int argc, char **argv)
 {
-	FILE *fstream = NULL;
-	char count[8];
-	memset(count, 0, sizeof(count));
-	fstream = popen("cat /etc/storage/chinadns/chnroute.txt |wc -l","r");
-	if(fstream) {
-		fgets(count, sizeof(count), fstream);
-		pclose(fstream);
-	} else {
-		sprintf(count, "%d", 0);
-	}
-	if (strlen(count) > 0)
-		count[strlen(count) - 1] = 0;
-	websWrite(wp, "function chnroute_count() { return '%s';}\n", count);
+	int count;
+
+	count = count_text_file_lines("/etc/storage/chinadns/chnroute.txt");
+	websWrite(wp, "function chnroute_count() { return '%d';}\n", count);
 #if defined(APP_SHADOWSOCKS)
-	memset(count, 0, sizeof(count));
-	fstream = popen("grep ^server /etc/storage/gfwlist/dnsmasq_gfwlist.conf |wc -l","r");
-	if(fstream) {
-		fgets(count, sizeof(count), fstream);
-		pclose(fstream);
-	} else {
-		sprintf(count, "%d", 0);
-	}
-	if (strlen(count) > 0)
-		count[strlen(count) - 1] = 0;
-	websWrite(wp, "function gfwlist_count() { return '%s';}\n", count);	
+	count = count_text_file_prefix_lines("/etc/storage/gfwlist/dnsmasq_gfwlist.conf", "server");
+	websWrite(wp, "function gfwlist_count() { return '%d';}\n", count);
 #endif
 	return 0;
 }

@@ -133,6 +133,9 @@ extern char *get_param_str(char *line, const char *param, int dups);
 
 extern int fput_string(const char *name, const char *value);
 extern int fput_int(const char *name, int value);
+extern int read_cmd_stdout_line(char *const argv[], char *buffer, size_t size);
+extern int count_text_file_lines(const char *path);
+extern int count_text_file_prefix_lines(const char *path, const char *prefix);
 
 extern int compare_text_files(const char* file1, const char* file2);
 extern int mkdir_path_mode(const char *dirpath, mode_t mode);

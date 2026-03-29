@@ -341,6 +341,16 @@ iwpriv_set_str(const char *ifname, const char *param, const char *value)
 }
 
 int
+iwpriv_set_switch_int_pair(const char *ifname, const char *param, int value1, int value2)
+{
+	char param_value[96];
+
+	snprintf(param_value, sizeof(param_value), "%s=%d,%d", param, value1, value2);
+
+	return eval("iwpriv", ifname, "switch", param_value);
+}
+
+int
 iwpriv_set_mcast_rate(const char *ifname, int value, int is_aband)
 {
 	int i_mphy;

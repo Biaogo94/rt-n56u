@@ -251,11 +251,11 @@ update_inic_mii(void)
 	iwpriv_set_int(ifname_inic, "asiccheck", 1);
 
 	// config RT3352 embedded switch for VLAN3 passthrough
-	doSystem("iwpriv %s switch setVlanId=%d,%d", ifname_inic, 2, INIC_GUEST_VLAN_VID);
+	iwpriv_set_switch_int_pair(ifname_inic, "setVlanId", 2, INIC_GUEST_VLAN_VID);
 
 	// power down unused PHY of RT3352 embedded switch
 	for(i = 0; i < 5; i++)
-		doSystem("iwpriv %s switch setPortPowerDown=%d,%d", ifname_inic, i, 1);
+		iwpriv_set_switch_int_pair(ifname_inic, "setPortPowerDown", i, 1);
 
 	// add static IGMP entries (workaround for IGMP snooping bug in iNIC firmware)
 	iwpriv_set_str(ifname_inic, "IgmpAdd", "01:00:5e:7f:ff:fa"); // SSDP IPv4

@@ -593,7 +593,140 @@ fput_int(const char *name, int value)
 	return fput_string(name, svalue);
 }
 
-int 
+int
+read_cmd_stdout_line(char *const argv[], char *buffer, size_t size)
+{
+	sigset_t set;
+	pid_t pid, ret;
+	int status;
+	int pipefd[2];
+	int sig, i;
+	ssize_t read_len;
+	size_t out_len;
+	char chunk[128];
+	char *newline;
+
+	if (!argv || !argv[0] || !buffer || size == 0)
+		return EINVAL;
+
+	buffer[0] = '\0';
+
+	if (pipe(pipefd) != 0)
+		return errno;
+
+	switch (pid = fork()) {
+	case -1:
+		close(pipefd[0]);
+		close(pipefd[1]);
+		return errno;
+	case 0:
+		for (sig = 0; sig < (_NSIG - 1); sig++)
+			signal(sig, SIG_DFL);
+
+		sigemptyset(&set);
+		sigprocmask(SIG_SETMASK, &set, NULL);
+
+		close(pipefd[0]);
+		dup2(pipefd[1], STDOUT_FILENO);
+		close(pipefd[1]);
+
+		for (i = 3; i < 256; i++)
+			close(i);
+		ioctl(0, TIOCNOTTY, 0);
+		setsid();
+
+		setenv("PATH", SYS_EXEC_PATH, 1);
+		execvp(argv[0], argv);
+		_exit(errno);
+	default:
+		close(pipefd[1]);
+		out_len = 0;
+		for (;;) {
+			read_len = read(pipefd[0], chunk, sizeof(chunk));
+			if (read_len < 0) {
+				if (errno == EINTR)
+					continue;
+				break;
+			}
+			if (read_len == 0)
+				break;
+			if (out_len < (size - 1)) {
+				size_t copy_len = read_len;
+				size_t avail = (size - 1) - out_len;
+				if (copy_len > avail)
+					copy_len = avail;
+				memcpy(buffer + out_len, chunk, copy_len);
+				out_len += copy_len;
+				buffer[out_len] = '\0';
+			}
+		}
+		close(pipefd[0]);
+
+		do
+			ret = waitpid(pid, &status, 0);
+		while ((ret == -1) && (errno == EINTR));
+
+		if (ret != pid)
+			return errno;
+
+		newline = strpbrk(buffer, "\r\n");
+		if (newline)
+			*newline = '\0';
+
+		if (WIFEXITED(status))
+			return WEXITSTATUS(status);
+
+		return status;
+	}
+}
+
+int
+count_text_file_lines(const char *path)
+{
+	FILE *fp;
+	char line[MAX_FILE_LINE_SIZE];
+	int count = 0;
+
+	if (!path || !*path)
+		return 0;
+
+	fp = fopen(path, "r");
+	if (!fp)
+		return 0;
+
+	while (fgets(line, sizeof(line), fp))
+		count++;
+
+	fclose(fp);
+	return count;
+}
+
+int
+count_text_file_prefix_lines(const char *path, const char *prefix)
+{
+	FILE *fp;
+	char line[MAX_FILE_LINE_SIZE];
+	size_t prefix_len;
+	int count = 0;
+
+	if (!path || !*path || !prefix)
+		return 0;
+
+	prefix_len = strlen(prefix);
+	fp = fopen(path, "r");
+	if (!fp)
+		return 0;
+
+	while (fgets(line, sizeof(line), fp)) {
+		if (!strncmp(line, prefix, prefix_len))
+			count++;
+	}
+
+	fclose(fp);
+	return count;
+}
+
+int
 compare_text_files(const char* file1, const char* file2)
 {
 	FILE *fp1, *fp2;
