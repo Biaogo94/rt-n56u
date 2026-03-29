@@ -507,6 +507,26 @@ set_interface_mtu(const char *ifname, int mtu)
 }
 
 int
+set_interface_txqueuelen(const char *ifname, int txqueuelen)
+{
+	struct ifreq ifr;
+	int sockfd, ret;
+
+	if ((sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_RAW)) < 0)
+		return -1;
+
+	memset(&ifr, 0, sizeof(ifr));
+	strncpy(ifr.ifr_name, ifname, IFNAMSIZ);
+	ifr.ifr_qlen = txqueuelen;
+
+	ret = ioctl(sockfd, SIOCSIFTXQLEN, &ifr);
+
+	close(sockfd);
+
+	return ret;
+}
+
+int
 get_interface_hwaddr(const char *ifname, unsigned char mac[6])
 {
 	struct ifreq ifr;

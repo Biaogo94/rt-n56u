@@ -188,6 +188,7 @@ extern int       get_interface_index(const char *ifname);
 extern int       get_interface_irq(const char *ifname);
 extern int       get_interface_mtu(const char *ifname);
 extern int       set_interface_mtu(const char *ifname, int mtu);
+extern int       set_interface_txqueuelen(const char *ifname, int txqueuelen);
 extern int       get_interface_hwaddr(const char *ifname, unsigned char mac[6]);
 extern int       set_interface_hwaddr(const char *ifname, const char *mac_str);
 extern in_addr_t get_interface_addr4(const char *ifname);

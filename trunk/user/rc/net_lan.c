@@ -111,7 +111,7 @@ init_bridge(int is_ap_mode)
 	}
 
 #if BOARD_RAM_SIZE < 64
-	doSystem("ifconfig %s txqueuelen %d", IFNAME_MAC, SHRINK_TX_QUEUE_LEN);
+	set_interface_txqueuelen(IFNAME_MAC, SHRINK_TX_QUEUE_LEN);
 #endif
 	set_interface_hwaddr(IFNAME_MAC, lan_hwaddr);
 	ifconfig(IFNAME_MAC, IFUP, NULL, NULL);
@@ -150,7 +150,7 @@ init_bridge(int is_ap_mode)
 	{
 		/* workaround for create all pseudo interfaces and fix iNIC issue (common PLL config) */
 		gen_ralink_config_2g(1);
-		doSystem("ifconfig %s %s", IFNAME_2G_MAIN, "up");
+		ifconfig(IFNAME_2G_MAIN, IFUP, NULL, NULL);
 	}
 #endif
 #if BOARD_HAS_5G_RADIO
@@ -158,7 +158,7 @@ init_bridge(int is_ap_mode)
 	{
 		/* workaround for create all pseudo interfaces */
 		gen_ralink_config_5g(1);
-		doSystem("ifconfig %s %s", IFNAME_5G_MAIN, "up");
+		ifconfig(IFNAME_5G_MAIN, IFUP, NULL, NULL);
 	}
 #endif
 #else /* BOARD_2G_IN_SOC || defined (BOARD_MT7915_DBDC) */
@@ -167,7 +167,7 @@ init_bridge(int is_ap_mode)
 	{
 		/* workaround for create all pseudo interfaces and fix iNIC issue (common PLL config) */
 		gen_ralink_config_5g(1);
-		doSystem("ifconfig %s %s", IFNAME_5G_MAIN, "up");
+		ifconfig(IFNAME_5G_MAIN, IFUP, NULL, NULL);
 	}
 #endif
 #if !defined (USE_RT3352_MII)
@@ -175,7 +175,7 @@ init_bridge(int is_ap_mode)
 	{
 		/* workaround for create all pseudo interfaces */
 		gen_ralink_config_2g(1);
-		doSystem("ifconfig %s %s", IFNAME_2G_MAIN, "up");
+		ifconfig(IFNAME_2G_MAIN, IFUP, NULL, NULL);
 	}
 #endif
 #endif
@@ -255,13 +255,13 @@ init_bridge(int is_ap_mode)
 	sleep(1);
 
 #if BOARD_RAM_SIZE < 64
-	doSystem("ifconfig %s txqueuelen %d", IFNAME_2G_MAIN, SHRINK_TX_QUEUE_LEN);
-	doSystem("ifconfig %s txqueuelen %d", IFNAME_2G_GUEST, SHRINK_TX_QUEUE_LEN);
-	doSystem("ifconfig %s txqueuelen %d", IFNAME_2G_APCLI, SHRINK_TX_QUEUE_LEN);
-	doSystem("ifconfig %s txqueuelen %d", IFNAME_2G_WDS0, SHRINK_TX_QUEUE_LEN);
-	doSystem("ifconfig %s txqueuelen %d", IFNAME_2G_WDS1, SHRINK_TX_QUEUE_LEN);
-	doSystem("ifconfig %s txqueuelen %d", IFNAME_2G_WDS2, SHRINK_TX_QUEUE_LEN);
-	doSystem("ifconfig %s txqueuelen %d", IFNAME_2G_WDS3, SHRINK_TX_QUEUE_LEN);
+	set_interface_txqueuelen(IFNAME_2G_MAIN, SHRINK_TX_QUEUE_LEN);
+	set_interface_txqueuelen(IFNAME_2G_GUEST, SHRINK_TX_QUEUE_LEN);
+	set_interface_txqueuelen(IFNAME_2G_APCLI, SHRINK_TX_QUEUE_LEN);
+	set_interface_txqueuelen(IFNAME_2G_WDS0, SHRINK_TX_QUEUE_LEN);
+	set_interface_txqueuelen(IFNAME_2G_WDS1, SHRINK_TX_QUEUE_LEN);
+	set_interface_txqueuelen(IFNAME_2G_WDS2, SHRINK_TX_QUEUE_LEN);
+	set_interface_txqueuelen(IFNAME_2G_WDS3, SHRINK_TX_QUEUE_LEN);
 #endif
 
 	ifconfig(IFNAME_BR, IFUP, NULL, NULL);
@@ -269,7 +269,7 @@ init_bridge(int is_ap_mode)
 #if BOARD_HAS_5G_RADIO
 	if (!wl_radio_on || (wl_mode_x == 1 || wl_mode_x == 3)) {
 		usleep(500000);
-		doSystem("ifconfig %s %s", IFNAME_5G_MAIN, "down");
+		ifconfig(IFNAME_5G_MAIN, 0, NULL, NULL);
 		gen_ralink_config_5g(0);
 	}
 
@@ -280,7 +280,7 @@ init_bridge(int is_ap_mode)
 #if !defined(USE_RT3352_MII)
 	if (!rt_radio_on || (rt_mode_x == 1 || rt_mode_x == 3)) {
 		usleep(500000);
-		doSystem("ifconfig %s %s", IFNAME_2G_MAIN, "down");
+		ifconfig(IFNAME_2G_MAIN, 0, NULL, NULL);
 		gen_ralink_config_2g(0);
 	}
 
