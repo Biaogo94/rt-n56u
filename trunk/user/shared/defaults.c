@@ -28,6 +28,7 @@ struct nvram_pair router_defaults[] = {
 	/* Restore defaults */
 	{ "restore_defaults", "0" },		/* Set to 0 to not restore defaults on boot */
 	{ "nvram_manual", "0" },		/* Manual commit mode: 1: manual, 0: auto */
+	{ "debug_cmd_enable", "0" },		/* Web console command execution gate */
 
 #if defined (USE_NAND_FLASH)
 	{ "mtd_rwfs_mount", "0" },		/* Allow mount MTD RWFS partition on boot */

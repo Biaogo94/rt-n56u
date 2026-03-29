@@ -16,6 +16,7 @@
 <script type="text/javascript" src="/popup.js"></script>
 <script>
 var $j = jQuery.noConflict();
+var cmd_console_enabled = ('<% nvram_get_x("", "debug_cmd_enable"); %>' === '1');
 
 <% login_state_hook(); %>
 
@@ -24,9 +25,11 @@ function initial(){
 	show_menu(5,7,6);
 	show_footer();
 
-	if (!login_safe()){
+	if (!login_safe() || !cmd_console_enabled){
 		$j('#btn_exec').attr('disabled', 'disabled');
 		$j('#SystemCmd').attr('disabled', 'disabled');
+		if (!cmd_console_enabled)
+			$j('#console_disabled_alert').show();
 	}else
 		document.form.SystemCmd.focus();
 }
@@ -35,12 +38,13 @@ function getResponse(){
 	$j.get('/console_response.asp', function(data){
 		var response = ($j.browser.msie && !is_ie11p) ? data.nl2br() : data;
 		$j("#console_area").text(response);
-		$j('#btn_exec').removeAttr('disabled');
+		if (login_safe() && cmd_console_enabled)
+			$j('#btn_exec').removeAttr('disabled');
 	});
 }
 
 function startPost(){
-	if (!login_safe())
+	if (!login_safe() || !cmd_console_enabled)
 		return false;
 	$j('#btn_exec').attr('disabled', 'disabled');
 	$j.post('/apply.cgi',
@@ -115,6 +119,7 @@ function checkEnter(e){
                                 <div class="row-fluid">
                                     <div id="tabMenu" class="submenuBlock"></div>
                                     <div class="alert alert-danger" style="margin: 10px;"><#Console_warn#></div>
+                                    <div id="console_disabled_alert" class="alert alert-info" style="margin: 10px; display: none;">Command console is disabled by default. Set <code>nvram set debug_cmd_enable=1</code> and commit to enable it.</div>
 
                                     <table width="100%" cellpadding="4" cellspacing="0" class="table">
                                         <tr>

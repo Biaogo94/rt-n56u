@@ -146,6 +146,21 @@ websRedirect(webs_t wp, const char *url)
 }
 
 static void
+write_syscmd_log(const char *message)
+{
+	FILE *fp;
+
+	fp = fopen("/tmp/syscmd.log", "w");
+	if (!fp)
+		return;
+
+	if (message && *message)
+		fprintf(fp, "%s\n", message);
+
+	fclose(fp);
+}
+
+static void
 sys_script(char *name)
 {
 	char scmd[64];
@@ -159,16 +174,17 @@ sys_script(char *name)
 
 	if (strcmp(name,"syscmd.sh")==0)
 	{
-		if (SystemCmd[0] && get_login_safe()) {
+		if (nvram_invmatch("debug_cmd_enable", "1")) {
+			SystemCmd[0] = '\0';
+			write_syscmd_log("Command console is disabled. Set 'nvram set debug_cmd_enable=1' and commit to enable it.");
+		} else if (SystemCmd[0] && get_login_safe()) {
 			char path_env[64];
 			snprintf(path_env, sizeof(path_env), "PATH=%s", SYS_EXEC_PATH_OPT);
 			putenv(path_env);
 			doSystem("%s >/tmp/syscmd.log 2>&1\n", SystemCmd);
 			SystemCmd[0] = '\0';
 		} else {
-			FILE *fp = fopen("/tmp/syscmd.log", "w");
-			if (fp)
-				fclose(fp);
+			write_syscmd_log(NULL);
 		}
 	}
 	else if (strcmp(name, "syslog.sh")==0)
@@ -3201,10 +3217,14 @@ apply_cgi(const char *url, webs_t wp)
 	{
 		size_t cmd_len;
 		char *cmd_str = websGetVar(wp, "SystemCmd", "");
-		
-		cmd_len = MIN(sizeof(SystemCmd)-1, strlen(cmd_str));
-		strncpy(SystemCmd, cmd_str, cmd_len);
-		SystemCmd[cmd_len] = '\0';
+
+		if (nvram_match("debug_cmd_enable", "1")) {
+			cmd_len = MIN(sizeof(SystemCmd)-1, strlen(cmd_str));
+			strncpy(SystemCmd, cmd_str, cmd_len);
+			SystemCmd[cmd_len] = '\0';
+		} else {
+			SystemCmd[0] = '\0';
+		}
 		websRedirect(wp, current_url);
 		return 0;
 	}
