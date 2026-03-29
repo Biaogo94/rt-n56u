@@ -16,6 +16,7 @@ WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "build.yml"
 
 VARIANT_ORDER = ["mt7620", "mt7628", "mt7621", "mt7621-usb"]
 DEFAULT_SMOKE_TARGET = "RM2100"
+ALL_TARGETS_OPTION = "ALL"
 
 CI_GROUPS = {
     "mt7620": ["PSG1208", "PSG1218", "NEWIFI-MINI", "MI-MINI"],
@@ -199,8 +200,7 @@ def yaml_list(items, indent: int) -> str:
 
 def render_build_workflow(catalog: dict) -> str:
     target_names = [item["target"] for item in catalog["targets"]]
-    manual_target_options = yaml_list(target_names, 10)
-    variant_options = yaml_list(catalog["variants"], 10)
+    manual_target_options = yaml_list([ALL_TARGETS_OPTION] + target_names, 10)
 
     if DEFAULT_SMOKE_TARGET not in target_names:
         raise ValueError(f"Smoke target {DEFAULT_SMOKE_TARGET} is not defined in the catalog")
@@ -210,7 +210,7 @@ def render_build_workflow(catalog: dict) -> str:
 name: Build Firmware
 
 concurrency:
-  group: build-firmware-${{{{ github.workflow }}}}-${{{{ github.event_name }}}}-${{{{ github.event.pull_request.number || github.ref_name }}}}-${{{{ github.event.inputs.build_mode || 'auto' }}}}-${{{{ github.event.inputs.target || github.event.inputs.variant || 'default' }}}}
+  group: build-firmware-${{{{ github.workflow }}}}-${{{{ github.event_name }}}}-${{{{ github.event.pull_request.number || github.ref_name }}}}-${{{{ github.event.inputs.target || 'smoke' }}}}
   cancel-in-progress: true
 
 on:
@@ -228,13 +228,6 @@ on:
       - main
   workflow_dispatch:
     inputs:
-      build_mode:
-        description: 'Manual build mode'
-        required: true
-        default: 'single-target'
-        type: choice
-        options:
-{yaml_list(['single-target', 'variant-batch'], 10)}
       target:
         description: 'Build target model'
         required: true
@@ -242,13 +235,6 @@ on:
         type: choice
         options:
 {manual_target_options}
-      variant:
-        description: 'Batch build variant'
-        required: true
-        default: 'mt7621'
-        type: choice
-        options:
-{variant_options}
 
 env:
   IMAGES_DIR: /opt/images
@@ -343,37 +329,38 @@ jobs:
             set_output "build_mode" "smoke-target"
             set_output "build_variant" ""
             set_output "artifact_name" "Padavan-${{target}}-${{kernel_ver}}"
-          elif [ "${{{{ github.event.inputs.build_mode }}}}" = "single-target" ]; then
-            target="${{{{ github.event.inputs.target }}}}"
-            echo "Building single target: $target"
-            fakeroot ./build_firmware_modify "$target"
-            collect_image "$target"
-            set_output "BUILD_MODE" "single-target"
-            set_output "BUILD_VARIANT" ""
-            set_output "build_mode" "single-target"
-            set_output "build_variant" ""
-            set_output "artifact_name" "Padavan-${{target}}-${{kernel_ver}}"
           else
-            variant="${{{{ github.event.inputs.variant || 'mt7621' }}}}"
-            targets="$(python3 "$catalog_script" list-group "$variant")"
-            if [ -z "$targets" ]; then
-              echo "No targets defined for variant: $variant" >&2
-              exit 1
+            target="${{{{ github.event.inputs.target }}}}"
+            if [ "$target" = "{ALL_TARGETS_OPTION}" ]; then
+              targets="$(python3 "$catalog_script" list-all-targets)"
+              if [ -z "$targets" ]; then
+                echo "No firmware targets defined" >&2
+                exit 1
+              fi
+
+              echo "Building all targets: $targets"
+              for model in $targets; do
+                echo "=== Building $model ==="
+                fakeroot ./build_firmware_ci "$model"
+                collect_image "$model"
+                ./clear_tree_simple >/dev/null 2>&1 || true
+              done
+
+              set_output "BUILD_MODE" "all-targets"
+              set_output "BUILD_VARIANT" ""
+              set_output "build_mode" "all-targets"
+              set_output "build_variant" ""
+              set_output "artifact_name" "Padavan-{ALL_TARGETS_OPTION}-${{kernel_ver}}-${{git_version}}"
+            else
+              echo "Building single target: $target"
+              fakeroot ./build_firmware_modify "$target"
+              collect_image "$target"
+              set_output "BUILD_MODE" "single-target"
+              set_output "BUILD_VARIANT" ""
+              set_output "build_mode" "single-target"
+              set_output "build_variant" ""
+              set_output "artifact_name" "Padavan-${{target}}-${{kernel_ver}}"
             fi
-
-            echo "Building targets: $targets"
-            for model in $targets; do
-              echo "=== Building $model ==="
-              fakeroot ./build_firmware_ci "$model"
-              collect_image "$model"
-              ./clear_tree_simple >/dev/null 2>&1 || true
-            done
-
-            set_output "BUILD_MODE" "variant-batch"
-            set_output "BUILD_VARIANT" "${{variant}}"
-            set_output "build_mode" "variant-batch"
-            set_output "build_variant" "${{variant}}"
-            set_output "artifact_name" "Padavan-${{variant}}-${{kernel_ver}}-${{git_version}}"
           fi
 
       - name: List built images
@@ -439,6 +426,12 @@ def command_list_group(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_list_all_targets(args: argparse.Namespace) -> int:
+    catalog = build_catalog()
+    sys.stdout.write(" ".join(item["target"] for item in catalog["targets"]))
+    return 0
+
+
 def command_write_manifest(args: argparse.Namespace) -> int:
     write_manifest(
         catalog_path=Path(args.catalog),
@@ -494,6 +487,9 @@ def build_parser() -> argparse.ArgumentParser:
     list_group = subparsers.add_parser("list-group", help="Print targets for a CI group as a space-separated list.")
     list_group.add_argument("group", choices=VARIANT_ORDER)
     list_group.set_defaults(func=command_list_group)
+
+    list_all_targets = subparsers.add_parser("list-all-targets", help="Print all targets as a space-separated list.")
+    list_all_targets.set_defaults(func=command_list_all_targets)
 
     write_manifest_parser = subparsers.add_parser("write-manifest", help="Write manifest.json for built firmware images.")
     write_manifest_parser.add_argument("--images-dir", required=True, help="Directory containing Padavan-*.trx images.")
