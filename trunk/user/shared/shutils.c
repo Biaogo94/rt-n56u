@@ -163,11 +163,53 @@ void time_zone_x_mapping()
 	fput_string("/etc/TZ", nvram_safe_get("time_zone_x"));
 }
 
+static int
+eval_with_stdin_file(char *const argv[], const char *stdin_path)
+{
+	pid_t pid, ret;
+	int status;
+	int fd;
+
+	if (!argv || !argv[0] || !stdin_path)
+		return EINVAL;
+
+	switch (pid = fork()) {
+	case -1:
+		perror("fork");
+		return errno;
+	case 0:
+		fd = open(stdin_path, O_RDONLY);
+		if (fd < 0) {
+			perror(stdin_path);
+			_exit(errno);
+		}
+
+		dup2(fd, STDIN_FILENO);
+		close(fd);
+		setenv("PATH", SYS_EXEC_PATH, 1);
+		execvp(argv[0], argv);
+		perror(argv[0]);
+		_exit(errno);
+	default:
+		do
+			ret = waitpid(pid, &status, 0);
+		while ((ret == -1) && (errno == EINTR));
+
+		if (ret != pid) {
+			perror("waitpid");
+			return errno;
+		}
+		if (WIFEXITED(status))
+			return WEXITSTATUS(status);
+		return status;
+	}
+}
+
 void change_passwd_unix(char *user, char *pass)
 {
 	FILE *fp;
-	char cmdbuf[64];
 	char *tmpfile = "/tmp/tmpchpw";
+	char *const chpasswd_argv[] = { "/usr/sbin/chpasswd", "-m", NULL };
 
 	if (!user || !*user)
 		user = SYS_USER_ROOT;
@@ -179,10 +221,9 @@ void change_passwd_unix(char *user, char *pass)
 	if (fp) {
 		fprintf(fp, "%s:%s\n", user, pass);
 		fclose(fp);
+		eval_with_stdin_file(chpasswd_argv, tmpfile);
 	}
 
-	if (snprintf(cmdbuf, sizeof(cmdbuf), "/usr/sbin/chpasswd -m < %s", tmpfile) < (int)sizeof(cmdbuf))
-		system(cmdbuf);
 	unlink(tmpfile);
 
 	chmod("/etc/shadow", 0640);
