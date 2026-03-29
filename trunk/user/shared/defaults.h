@@ -19,6 +19,7 @@
 #define _defaults_h_
 
 #include <ralink_board.h>
+#include "wireless_caps.h"
 
 #define SYS_SHELL		"/bin/sh"
 #define SYS_EXEC_PATH		"/usr/sbin:/usr/bin:/sbin:/bin"
@@ -38,7 +39,11 @@
 #define DEF_WLAN_2G_CC		"CN"
 #define DEF_WLAN_5G_CC		"US"
 #define DEF_WLAN_2G_SSID	BOARD_PID "_%s"
+#if BOARD_HAS_2G_RADIO && BOARD_HAS_5G_RADIO && WL_CAP_BAND_STEERING
+#define DEF_WLAN_5G_SSID	DEF_WLAN_2G_SSID
+#else
 #define DEF_WLAN_5G_SSID	BOARD_PID "_5G_%s"
+#endif
 #define DEF_WLAN_2G_GSSID	BOARD_PID "_GUEST_%s"
 #define DEF_WLAN_5G_GSSID	BOARD_PID "_GUEST_5G_%s"
 #define DEF_WLAN_2G_PSK		"1234567890"
